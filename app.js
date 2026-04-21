@@ -1,9 +1,10 @@
 // ====== Firebase Configuration & Setup ======
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+// গুগল অথেন্টিকেশন ইমপোর্ট বাদ দেওয়া হয়েছে
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, orderBy, limit, onSnapshot, getDocs, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// Config provided in prompt
+// Config provided
 const firebaseConfig = {
   apiKey: "AIzaSyB2Gv7FXkDP5AJEm2MrZBEin6rN8YZwnK8",
   authDomain: "betbd-be722.firebaseapp.com",
@@ -17,7 +18,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
 
 // Global State
 let currentUser = null;
@@ -66,28 +66,31 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// ইমেইল লগিন ফাংশন
 window.loginWithEmail = () => {
     const e = document.getElementById('email').value;
     const p = document.getElementById('password').value;
-    signInWithEmailAndPassword(auth, e, p).catch(err => alert(err.message));
+    if(!e || !p) return alert("Please enter email and password");
+    signInWithEmailAndPassword(auth, e, p).catch(err => alert("Login Failed: " + err.message));
 };
 
+// ইমেইল রেজিস্টার ফাংশন
 window.registerWithEmail = () => {
     const e = document.getElementById('email').value;
     const p = document.getElementById('password').value;
-    createUserWithEmailAndPassword(auth, e, p).catch(err => alert(err.message));
+    if(!e || !p) return alert("Please enter email and password");
+    if(p.length < 6) return alert("Password must be at least 6 characters");
+    createUserWithEmailAndPassword(auth, e, p).catch(err => alert("Registration Failed: " + err.message));
 };
 
-window.loginWithGoogle = () => {
-    signInWithPopup(auth, googleProvider).catch(err => alert(err.message));
-};
-
+// পাসওয়ার্ড রিসেট ফাংশন
 window.resetPassword = () => {
     const e = document.getElementById('email').value;
-    if(!e) return alert("Please enter email first");
-    sendPasswordResetEmail(auth, e).then(() => alert("Reset link sent to email")).catch(err => alert(err.message));
+    if(!e) return alert("Please enter your email address first");
+    sendPasswordResetEmail(auth, e).then(() => alert("Password reset link sent to your email!")).catch(err => alert(err.message));
 };
 
+// লগআউট
 window.logout = () => signOut(auth);
 
 
@@ -99,6 +102,9 @@ window.showPage = (pageId) => {
     if(pageId === 'leaderboard') loadLeaderboard();
     if(pageId === 'wallet') loadTransactionHistory();
     if(pageId === 'admin') loadAdminPanel();
+    
+    // மொবাইলে পেজ পরিবর্তন করলে স্ক্রল টপে নিয়ে যাওয়া
+    window.scrollTo(0,0);
 };
 
 window.openGame = (gameId) => {
@@ -126,7 +132,7 @@ async function processTransaction(amount, type, description) {
         uid: currentUser.uid,
         email: currentUser.email,
         amount: amount,
-        type: type, // 'win', 'loss', 'deposit', 'withdraw'
+        type: type, 
         description: description,
         timestamp: serverTimestamp(),
         status: 'completed'
@@ -139,26 +145,25 @@ async function processTransaction(amount, type, description) {
 window.playCoinFlip = async (choice) => {
     const bet = parseFloat(document.getElementById('coin-bet').value);
     const msg = document.getElementById('coin-msg');
-    if(!bet || bet <= 0 || bet > userData.balance) return alert("Invalid bet amount");
+    if(!bet || bet <= 0 || bet > userData.balance) return alert("Invalid or insufficient bet amount");
 
-    // Deduct bet
     await processTransaction(-bet, 'loss', 'Coin Flip Bet');
     
     msg.innerText = "Flipping...";
-    msg.className = "mt-4 text-sm text-yellow-400";
+    msg.className = "mt-4 text-sm text-yellow-400 font-bold h-6";
     
     setTimeout(async () => {
         const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
-        document.getElementById('coin-result').innerText = result[0];
+        document.getElementById('coin-result').innerText = result[0]; // H or T
         
         if (result === choice) {
             const win = bet * 1.9; // 1.9x payout
             await processTransaction(win, 'win', 'Coin Flip Win');
-            msg.innerText = `You Won! +${win.toFixed(2)} coins. (Result: ${result})`;
-            msg.className = "mt-4 text-sm text-green-400 font-bold";
+            msg.innerText = `Won +${win.toFixed(2)}! (Result: ${result})`;
+            msg.className = "mt-4 text-sm text-green-400 font-bold h-6";
         } else {
-            msg.innerText = `You Lost! (Result: ${result})`;
-            msg.className = "mt-4 text-sm text-red-400 font-bold";
+            msg.innerText = `Lost! (Result: ${result})`;
+            msg.className = "mt-4 text-sm text-red-400 font-bold h-6";
         }
     }, 1000);
 };
@@ -171,10 +176,11 @@ window.playDice = async (choice) => {
 
     await processTransaction(-bet, 'loss', 'Dice Bet');
     msg.innerText = "Rolling...";
+    msg.className = "mt-4 text-sm text-gray-400 h-6";
 
     setTimeout(async () => {
         const roll = Math.floor(Math.random() * 100) + 1;
-        document.getElementById('dice-result').innerHTML = `<span class="text-yellow-400">${roll}</span>`;
+        document.getElementById('dice-result').innerHTML = `<span class="text-purple-400 font-bold">${roll}</span>`;
         
         let won = false;
         if (choice === 'under' && roll < 50) won = true;
@@ -183,11 +189,11 @@ window.playDice = async (choice) => {
         if (won) {
             const win = bet * 1.9;
             await processTransaction(win, 'win', 'Dice Win');
-            msg.innerText = `You Won! +${win.toFixed(2)}`;
-            msg.className = "mt-4 text-sm text-green-400 font-bold";
+            msg.innerText = `Won +${win.toFixed(2)}!`;
+            msg.className = "mt-4 text-sm text-green-400 font-bold h-6";
         } else {
-            msg.innerText = `You Lost!`;
-            msg.className = "mt-4 text-sm text-red-400 font-bold";
+            msg.innerText = `Lost!`;
+            msg.className = "mt-4 text-sm text-red-400 font-bold h-6";
         }
     }, 1000);
 };
@@ -201,6 +207,7 @@ window.playColor = async (choice) => {
 
     await processTransaction(-bet, 'loss', 'Color Bet');
     msg.innerText = "Drawing...";
+    msg.className = "mt-4 text-sm text-gray-400 h-6";
     
     setTimeout(async () => {
         const r = Math.random();
@@ -209,19 +216,19 @@ window.playColor = async (choice) => {
 
         if (r < 0.45) resultColor = 'red';
         else if (r < 0.90) resultColor = 'green';
-        else { resultColor = 'black'; multiplier = 5; } // Black is rare
+        else { resultColor = 'black'; multiplier = 5; }
 
-        resultBox.style.backgroundColor = resultColor;
+        resultBox.style.backgroundColor = resultColor === 'red' ? '#ef4444' : (resultColor === 'green' ? '#22c55e' : '#000000');
         resultBox.innerText = resultColor.toUpperCase();
 
         if (choice === resultColor) {
             const win = bet * multiplier;
             await processTransaction(win, 'win', `Color Win (${resultColor})`);
-            msg.innerText = `You Won! +${win.toFixed(2)}`;
-            msg.className = "mt-4 text-sm text-green-400 font-bold";
+            msg.innerText = `Won +${win.toFixed(2)}!`;
+            msg.className = "mt-4 text-sm text-green-400 font-bold h-6";
         } else {
-            msg.innerText = `You Lost!`;
-            msg.className = "mt-4 text-sm text-red-400 font-bold";
+            msg.innerText = `Lost!`;
+            msg.className = "mt-4 text-sm text-red-400 font-bold h-6";
         }
     }, 1500);
 };
@@ -235,13 +242,13 @@ window.playSpin = async () => {
 
     await processTransaction(-bet, 'loss', 'Spin Bet');
     msg.innerText = "Spinning...";
+    msg.className = "mt-4 text-sm text-pink-400 h-6";
 
     // Visual spin
     const randomDeg = Math.floor(Math.random() * 360) + 1440; // min 4 spins
     wheel.style.transform = `rotate(${randomDeg}deg)`;
 
     setTimeout(async () => {
-        // Multipliers: 0x, 0.5x, 1x, 2x, 5x
         const multipliers = [0, 0.5, 1, 2, 5];
         const resultMult = multipliers[Math.floor(Math.random() * multipliers.length)];
         
@@ -250,14 +257,13 @@ window.playSpin = async () => {
         if (resultMult > 0) {
             const win = bet * resultMult;
             await processTransaction(win, 'win', `Spin Win (x${resultMult})`);
-            msg.innerText = `Result: x${resultMult}. Paid: ${win.toFixed(2)}`;
-            msg.className = resultMult > 1 ? "mt-4 text-sm text-green-400 font-bold" : "mt-4 text-sm text-gray-400";
+            msg.innerText = `Result x${resultMult}. Paid: ${win.toFixed(2)}`;
+            msg.className = resultMult > 1 ? "mt-4 text-sm text-green-400 font-bold h-6" : "mt-4 text-sm text-yellow-400 h-6";
         } else {
-            msg.innerText = `You Lost! Result: x0`;
-            msg.className = "mt-4 text-sm text-red-400 font-bold";
+            msg.innerText = `Lost! Result x0`;
+            msg.className = "mt-4 text-sm text-red-400 font-bold h-6";
         }
         
-        // Reset rotation visually after a delay
         setTimeout(() => wheel.style.transform = `rotate(0deg)`, 2000);
     }, 3000);
 };
@@ -280,16 +286,16 @@ window.startAviator = async () => {
     aviatorActive = true;
     aviatorMultiplier = 1.00;
     
-    // Calculate Crash Point (Weighted logic: frequent low crashes, rare high crashes)
+    // Crash logic
     const r = Math.random();
-    if(r < 0.5) aviatorCrashPoint = (Math.random() * 1.5) + 1.01; // 1.01 - 2.50
-    else if(r < 0.8) aviatorCrashPoint = (Math.random() * 3) + 2.51; // 2.51 - 5.50
-    else aviatorCrashPoint = (Math.random() * 15) + 5.51; // 5.51 - 20.00
+    if(r < 0.5) aviatorCrashPoint = (Math.random() * 1.5) + 1.01; 
+    else if(r < 0.8) aviatorCrashPoint = (Math.random() * 3) + 2.51;
+    else aviatorCrashPoint = (Math.random() * 15) + 5.51; 
 
     document.getElementById('btn-aviator-start').classList.add('hidden-section');
     document.getElementById('btn-aviator-cashout').classList.remove('hidden-section');
     msg.innerText = "Flying...";
-    msg.className = "mt-4 text-sm text-yellow-400";
+    msg.className = "mt-4 text-sm text-yellow-400 h-6";
 
     const plane = document.getElementById('aviator-plane');
     plane.style.display = 'block';
@@ -298,15 +304,14 @@ window.startAviator = async () => {
         aviatorMultiplier += 0.01;
         document.getElementById('aviator-multiplier').innerText = aviatorMultiplier.toFixed(2) + "x";
         
-        // Move plane
-        plane.style.transform = `translate(${Math.min(aviatorMultiplier * 10, 200)}px, -${Math.min(aviatorMultiplier * 10, 100)}px)`;
+        // Move plane slightly in bounds
+        plane.style.transform = `translate(${Math.min(aviatorMultiplier * 8, 150)}px, -${Math.min(aviatorMultiplier * 8, 100)}px)`;
 
         if(aviatorMultiplier >= aviatorCrashPoint) {
-            // Crashed
             clearInterval(aviatorInterval);
             aviatorActive = false;
             msg.innerText = `CRASHED at ${aviatorMultiplier.toFixed(2)}x !`;
-            msg.className = "mt-4 text-sm text-red-500 font-bold";
+            msg.className = "mt-4 text-sm text-red-500 font-bold h-6";
             document.getElementById('btn-aviator-start').classList.remove('hidden-section');
             document.getElementById('btn-aviator-cashout').classList.add('hidden-section');
             plane.style.display = 'none';
@@ -326,8 +331,8 @@ window.cashoutAviator = async () => {
     document.getElementById('btn-aviator-cashout').classList.add('hidden-section');
     
     const msg = document.getElementById('aviator-msg');
-    msg.innerText = `Cashed Out! +${win.toFixed(2)}`;
-    msg.className = "mt-4 text-sm text-green-400 font-bold";
+    msg.innerText = `Cashed Out +${win.toFixed(2)}!`;
+    msg.className = "mt-4 text-sm text-green-400 font-bold h-6";
     document.getElementById('aviator-plane').style.display = 'none';
 };
 
@@ -354,7 +359,7 @@ function initApp() {
             markets[asset].price *= change;
         });
 
-        // Update UI for selected
+        // Update UI
         const priceElement = document.getElementById('live-price');
         priceElement.innerText = markets[selectedAsset].price.toFixed(4);
         
@@ -366,51 +371,54 @@ function initApp() {
             chartInstance.data.datasets[0].data = currentChartData;
             chartInstance.update();
         }
-
     }, 1000);
 
-    // Initialize Chart
+    // Initial Chart
     const ctx = document.getElementById('tradingChart').getContext('2d');
     chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: [],
             datasets: [{
-                label: 'Price',
+                label: 'Live Demo Price',
                 data: [],
                 borderColor: '#4ade80',
+                backgroundColor: 'rgba(74, 222, 128, 0.1)',
                 borderWidth: 2,
-                fill: false,
+                fill: true,
                 tension: 0.1,
                 pointRadius: 0
             }]
         },
-        options: { responsive: true, scales: { x: { display: false } }, animation: false }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            scales: { x: { display: false }, y: { position: 'right' } }, 
+            animation: false,
+            plugins: { legend: { display: false } }
+        }
     });
 
-    // Handle Asset Change
     document.getElementById('trade-asset').addEventListener('change', () => {
-        currentChartData = []; // clear chart
+        currentChartData = []; 
     });
 }
 
 window.placeTrade = async (direction) => {
     const amount = parseFloat(document.getElementById('trade-amount').value);
-    const duration = parseInt(document.getElementById('trade-duration').value); // 10, 20, 30
+    const duration = parseInt(document.getElementById('trade-duration').value);
     const asset = document.getElementById('trade-asset').value;
     
     if(!amount || amount <= 0 || amount > userData.balance) return alert("Invalid trade amount");
 
-    // Deduct
-    await processTransaction(-amount, 'loss', `Trade Placed: ${asset} ${direction}`);
+    await processTransaction(-amount, 'loss', `Trade: ${asset} ${direction}`);
     
     const startPrice = markets[asset].price;
     const tradeBox = document.createElement('div');
-    tradeBox.className = "bg-gray-800 p-2 rounded border-l-4 " + (direction==='UP' ? "border-green-500" : "border-red-500");
-    tradeBox.innerHTML = `<strong>${asset} ${direction}</strong> - Bet: ${amount} | Wait ${duration}s...`;
+    tradeBox.className = "bg-gray-800 p-3 rounded-xl border-l-4 " + (direction==='UP' ? "border-green-500" : "border-red-500");
+    tradeBox.innerHTML = `<strong>${asset} ${direction}</strong><br><span class="text-xs text-gray-400">Bet: ${amount} | Result in ${duration}s...</span>`;
     document.getElementById('active-trades').prepend(tradeBox);
 
-    // Resolution
     setTimeout(async () => {
         const endPrice = markets[asset].price;
         let won = false;
@@ -418,15 +426,14 @@ window.placeTrade = async (direction) => {
         if (direction === 'DOWN' && endPrice < startPrice) won = true;
 
         if (won) {
-            // Profit mapping: 10s -> 80%, 20s -> 85%, 30s -> 90%
             let profitMargin = duration === 10 ? 0.8 : (duration === 20 ? 0.85 : 0.9);
             const winAmount = amount + (amount * profitMargin);
             await processTransaction(winAmount, 'win', `Trade WON: ${asset}`);
-            tradeBox.innerHTML = `<strong>${asset} ${direction}</strong> - WON! +${winAmount.toFixed(2)}`;
-            tradeBox.classList.add("text-green-400");
+            tradeBox.innerHTML = `<strong>${asset} ${direction}</strong> - <span class="text-green-400 font-bold">WON +${winAmount.toFixed(2)}</span>`;
+            tradeBox.classList.add("border-green-400");
         } else {
-            tradeBox.innerHTML = `<strong>${asset} ${direction}</strong> - LOST!`;
-            tradeBox.classList.add("text-red-400");
+            tradeBox.innerHTML = `<strong>${asset} ${direction}</strong> - <span class="text-red-400 font-bold">LOST</span>`;
+            tradeBox.classList.add("border-red-600");
         }
     }, duration * 1000);
 };
@@ -440,7 +447,6 @@ window.requestTransaction = async (type) => {
     if(!amount || amount <= 0) return alert("Invalid amount");
     if(type === 'withdraw' && amount > userData.balance) return alert("Insufficient balance");
 
-    // Add to transactions as pending
     await addDoc(collection(db, "transactions"), {
         uid: currentUser.uid,
         email: currentUser.email,
@@ -452,24 +458,23 @@ window.requestTransaction = async (type) => {
     });
 
     if(type === 'withdraw') {
-        // Immediately deduct balance for withdraw request
         await updateDoc(userDocRef, { balance: userData.balance - amount });
     }
 
-    alert(`${type} request submitted to Admin!`);
+    alert(`${type.toUpperCase()} request submitted to Admin!`);
     document.getElementById(amtId).value = '';
     loadTransactionHistory();
 };
 
 async function loadTransactionHistory() {
     const historyDiv = document.getElementById('tx-history');
-    historyDiv.innerHTML = "Loading...";
+    historyDiv.innerHTML = "<p class='text-gray-400 text-center py-4'>Loading...</p>";
 
     const q = query(collection(db, "transactions"), where("uid", "==", currentUser.uid), orderBy("timestamp", "desc"), limit(20));
     const querySnapshot = await getDocs(q);
     
     historyDiv.innerHTML = "";
-    if(querySnapshot.empty) { historyDiv.innerHTML = "No transactions yet."; return; }
+    if(querySnapshot.empty) { historyDiv.innerHTML = "<p class='text-gray-400 text-center py-4'>No transactions yet.</p>"; return; }
 
     querySnapshot.forEach((doc) => {
         const tx = doc.data();
@@ -477,106 +482,4 @@ async function loadTransactionHistory() {
         if(tx.status === 'pending') color = 'text-yellow-400';
 
         historyDiv.innerHTML += `
-            <div class="flex justify-between bg-gray-800 p-2 rounded">
-                <div>
-                    <p class="font-bold">${tx.description}</p>
-                    <p class="text-xs text-gray-400">${tx.timestamp ? tx.timestamp.toDate().toLocaleString() : 'Just now'}</p>
-                </div>
-                <div class="font-bold ${color}">${tx.type.includes('loss') ? '-' : '+'}${tx.amount.toFixed(2)} (${tx.status})</div>
-            </div>
-        `;
-    });
-}
-
-
-// ====== Leaderboard ======
-async function loadLeaderboard() {
-    const tbody = document.getElementById('leaderboard-table');
-    tbody.innerHTML = "<tr><td colspan='3' class='text-center p-4'>Loading...</td></tr>";
-
-    const q = query(collection(db, "users"), orderBy("balance", "desc"), limit(10));
-    const querySnapshot = await getDocs(q);
-
-    tbody.innerHTML = "";
-    let rank = 1;
-    querySnapshot.forEach((doc) => {
-        const user = doc.data();
-        tbody.innerHTML += `
-            <tr class="border-b border-gray-800">
-                <td class="p-2 text-yellow-500 font-bold">#${rank}</td>
-                <td class="p-2">${user.email.split('@')[0]}***</td>
-                <td class="p-2 text-right text-green-400 font-bold">${user.balance.toFixed(2)}</td>
-            </tr>
-        `;
-        rank++;
-    });
-}
-
-// ====== Admin Panel ======
-async function loadAdminPanel() {
-    if(userData.role !== 'admin') return alert("Access Denied");
-    
-    const reqDiv = document.getElementById('admin-requests');
-    reqDiv.innerHTML = "Loading requests...";
-
-    const q = query(collection(db, "transactions"), where("status", "==", "pending"));
-    const querySnapshot = await getDocs(q);
-    
-    reqDiv.innerHTML = "";
-    if(querySnapshot.empty) { reqDiv.innerHTML = "No pending requests."; return; }
-
-    querySnapshot.forEach((docSnap) => {
-        const req = docSnap.data();
-        const reqId = docSnap.id;
-        reqDiv.innerHTML += `
-            <div class="bg-gray-800 p-3 rounded mb-2 border-l-4 border-yellow-500">
-                <p><strong>User:</strong> ${req.email}</p>
-                <p><strong>Type:</strong> ${req.type}</p>
-                <p><strong>Amount:</strong> ${req.amount}</p>
-                <div class="flex gap-2 mt-2">
-                    <button onclick="adminAction('${reqId}', '${req.uid}', '${req.type}', ${req.amount}, 'approve')" class="bg-green-500 px-3 py-1 rounded text-sm">Approve</button>
-                    <button onclick="adminAction('${reqId}', '${req.uid}', '${req.type}', ${req.amount}, 'reject')" class="bg-red-500 px-3 py-1 rounded text-sm">Reject</button>
-                </div>
-            </div>
-        `;
-    });
-}
-
-window.adminAction = async (txId, uid, type, amount, action) => {
-    // Update Transaction
-    await updateDoc(doc(db, "transactions", txId), { status: action === 'approve' ? 'completed' : 'rejected' });
-    
-    // Process Balance if approved deposit, or refunded withdrawal
-    const targetUserRef = doc(db, "users", uid);
-    const targetUserSnap = await getDoc(targetUserRef);
-    if(targetUserSnap.exists()) {
-        const tUser = targetUserSnap.data();
-        
-        if(action === 'approve' && type === 'deposit_request') {
-            await updateDoc(targetUserRef, { balance: tUser.balance + amount });
-        }
-        else if(action === 'reject' && type === 'withdraw_request') {
-            // Refund the deducted amount
-            await updateDoc(targetUserRef, { balance: tUser.balance + amount });
-        }
-    }
-    alert(`Request ${action}d!`);
-    loadAdminPanel();
-};
-
-window.adminSetBalance = async () => {
-    const email = document.getElementById('admin-user-email').value;
-    const newBal = parseFloat(document.getElementById('admin-set-balance').value);
-    
-    if(!email || isNaN(newBal)) return alert("Invalid inputs");
-
-    const q = query(collection(db, "users"), where("email", "==", email));
-    const querySnapshot = await getDocs(q);
-    
-    if(querySnapshot.empty) return alert("User not found");
-    
-    querySnapshot.forEach(async (userDoc) => {
-        await updateDoc(doc(db, "users", userDoc.id), { balance: newBal });
-        alert(`Balance updated for ${email}`);
-    });
-};
+            <div class="flex justify-between items-center bg
