@@ -3,200 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Demo Bet & Trade Pro</title>
+    <title>Pro Bet & Trade</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Firebase CDN (১০০% গ্যারান্টিড কাজ করবে) -->
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+    <!-- Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: pan-y; }
-        .neon-text { text-shadow: 0 0 10px #4ade80, 0 0 20px #4ade80; }
-        .glass { background: rgba(31, 41, 55, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        body { font-family: 'Segoe UI', sans-serif; touch-action: pan-y; background: #0f172a; color: white; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
         .hidden-section { display: none !important; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4ade80; border-radius: 10px; }
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
+<body>
+
+    <!-- Custom UI Toast/Popup Notification -->
+    <div id="toast-container" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none"></div>
 
     <!-- Auth Section -->
-    <div id="auth-section" class="flex items-center justify-center min-h-screen bg-gray-800 p-4">
-        <div class="glass p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center">
-            <div class="mb-8">
-                <i class="fa-solid fa-gamepad text-5xl text-green-400 mb-2 neon-text"></i>
-                <h1 class="text-3xl font-extrabold text-green-400 neon-text">DemoX</h1>
-                <p class="text-gray-400 text-sm mt-1">Betting & Trading Platform</p>
-            </div>
+    <div id="auth-section" class="flex items-center justify-center min-h-screen p-4">
+        <div class="glass p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
+            <h1 class="text-4xl font-extrabold text-blue-500 mb-6"><i class="fa-solid fa-bolt"></i> PRO<span class="text-white">X</span></h1>
             
+            <!-- Login Form -->
             <div id="login-form" class="space-y-4">
-                <div class="relative">
-                    <i class="fa-solid fa-envelope absolute left-4 top-4 text-gray-400"></i>
-                    <input type="email" id="email" placeholder="Email Address" class="w-full pl-12 p-3.5 rounded-xl bg-gray-700 text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-green-400">
-                </div>
-                
-                <div class="relative">
-                    <i class="fa-solid fa-lock absolute left-4 top-4 text-gray-400"></i>
-                    <input type="password" id="password" placeholder="Password" class="w-full pl-12 p-3.5 rounded-xl bg-gray-700 text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-green-400">
-                </div>
+                <input type="email" id="log-email" placeholder="Email (Gmail)" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <input type="password" id="log-pass" placeholder="Password" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <button onclick="loginUser()" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-xl font-bold text-lg transition shadow-lg">Login</button>
+                <p class="text-sm text-slate-400 mt-2 cursor-pointer" onclick="toggleAuth('reg')">Don't have an account? <span class="text-blue-400">Create One</span></p>
+            </div>
 
-                <div class="pt-2 space-y-3">
-                    <button onclick="loginWithEmail()" class="w-full bg-green-500 hover:bg-green-600 text-gray-900 p-3.5 rounded-xl font-bold text-lg shadow-[0_0_15px_rgba(74,222,128,0.4)] transition">Login</button>
-                    <button onclick="registerWithEmail()" class="w-full border-2 border-green-500 text-green-400 hover:bg-green-500 hover:text-gray-900 p-3.5 rounded-xl font-bold text-lg transition">Create Account</button>
-                </div>
-
-                <p class="text-sm mt-4 text-gray-400 cursor-pointer hover:text-green-400 underline decoration-gray-600 underline-offset-4" onclick="resetPassword()">Forgot Password?</p>
+            <!-- Register Form -->
+            <div id="reg-form" class="space-y-4 hidden-section">
+                <input type="text" id="reg-name" placeholder="Full Name" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <input type="email" id="reg-email" placeholder="Email (Gmail)" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <input type="password" id="reg-pass" placeholder="New Password" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <button onclick="registerUser()" class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-xl font-bold text-lg transition shadow-lg">Create Account</button>
+                <p class="text-sm text-slate-400 mt-2 cursor-pointer" onclick="toggleAuth('log')">Already have an account? <span class="text-blue-400">Login</span></p>
             </div>
         </div>
     </div>
 
-    <!-- Main App Section -->
+    <!-- Main App Layout -->
     <div id="app-section" class="hidden-section flex flex-col md:flex-row min-h-screen">
-        <!-- Sidebar Navigation -->
-        <nav class="w-full md:w-64 bg-gray-800 p-5 flex flex-col gap-3 shadow-xl md:h-screen md:sticky md:top-0">
-            <h2 class="text-2xl font-bold text-green-400 neon-text text-center mb-2 hidden md:block">DemoX</h2>
+        
+        <!-- Sidebar -->
+        <nav class="w-full md:w-20 lg:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-4 shadow-xl md:h-screen sticky top-0 z-40">
+            <h2 class="text-2xl font-bold text-blue-500 text-center hidden lg:block mb-4"><i class="fa-solid fa-bolt"></i> PROX</h2>
             
-            <div class="bg-gray-700 p-4 rounded-xl text-center shadow-inner mb-2 border border-gray-600">
-                <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">My Wallet</p>
-                <p class="text-2xl font-bold text-yellow-400"><i class="fa-solid fa-coins"></i> <span id="user-balance">0.00</span></p>
+            <div class="bg-slate-800 p-3 rounded-xl text-center border border-slate-700">
+                <p class="text-[10px] text-slate-400 uppercase">Balance</p>
+                <p class="text-lg font-bold text-green-400">৳ <span id="user-balance">0.00</span></p>
             </div>
             
             <div class="flex md:flex-col overflow-x-auto md:overflow-visible gap-2 pb-2 md:pb-0 hide-scroll">
-                <button onclick="showPage('dashboard')" class="nav-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg text-left whitespace-nowrap"><i class="fa-solid fa-house w-6 text-center"></i> Dashboard</button>
-                <button onclick="showPage('trading')" class="nav-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg text-left whitespace-nowrap"><i class="fa-solid fa-chart-line w-6 text-center"></i> Trading</button>
-                <button onclick="showPage('games')" class="nav-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg text-left whitespace-nowrap"><i class="fa-solid fa-gamepad w-6 text-center"></i> Games</button>
-                <button onclick="showPage('wallet')" class="nav-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg text-left whitespace-nowrap"><i class="fa-solid fa-wallet w-6 text-center"></i> Wallet</button>
-                <button onclick="showPage('leaderboard')" class="nav-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg text-left whitespace-nowrap"><i class="fa-solid fa-trophy w-6 text-center text-yellow-400"></i> Rank</button>
-                <button id="admin-btn" onclick="showPage('admin')" class="hidden-section nav-btn bg-red-900/50 border border-red-500 p-3 rounded-lg text-left whitespace-nowrap text-red-300"><i class="fa-solid fa-shield-halved w-6 text-center"></i> Admin</button>
+                <button onclick="showPage('dashboard')" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-left whitespace-nowrap"><i class="fa-solid fa-house lg:mr-2"></i> <span class="hidden lg:inline">Dashboard</span></button>
+                <button onclick="showPage('trading')" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-left whitespace-nowrap"><i class="fa-solid fa-chart-candlestick text-green-400 lg:mr-2"></i> <span class="hidden lg:inline">Trading</span></button>
+                <button onclick="showPage('wallet')" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-left whitespace-nowrap"><i class="fa-solid fa-wallet text-yellow-400 lg:mr-2"></i> <span class="hidden lg:inline">Wallet</span></button>
             </div>
-            
-            <div class="mt-auto hidden md:block">
-                <button onclick="logout()" class="w-full bg-red-500/20 text-red-400 border border-red-500 hover:bg-red-500 hover:text-white p-3 rounded-lg font-bold transition"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
-            </div>
+            <button onclick="logout()" class="mt-auto bg-red-500/20 text-red-400 p-3 rounded-xl font-bold border border-red-500/50"><i class="fa-solid fa-power-off"></i> <span class="hidden lg:inline">Logout</span></button>
         </nav>
 
-        <!-- Content Area -->
-        <main class="flex-1 p-4 sm:p-6 overflow-y-auto bg-gray-900 pb-20 md:pb-6">
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-6 overflow-y-auto pb-24 md:pb-6">
             
-            <!-- Dashboard Page -->
+            <!-- Dashboard / Games -->
             <div id="page-dashboard" class="page-section">
-                <h2 class="text-2xl sm:text-3xl font-bold mb-6">Welcome back! 👋</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                    <div class="glass p-6 rounded-2xl border-t-4 border-green-500 cursor-pointer" onclick="showPage('trading')">
-                        <i class="fa-solid fa-chart-line text-4xl text-green-400 mb-3"></i>
-                        <h3 class="text-xl font-bold">Trade Markets</h3>
+                <h2 class="text-2xl font-bold mb-6">Live Games (Min: ৳10)</h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <!-- 10 Games -->
+                    <div onclick="openGame('Coin Flip')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-coins text-4xl text-yellow-400 mb-2"></i><h3 class="font-bold">Coin Flip</h3>
                     </div>
-                    <div class="glass p-6 rounded-2xl border-t-4 border-purple-500 cursor-pointer" onclick="showPage('games')">
-                        <i class="fa-solid fa-dice text-4xl text-purple-400 mb-3"></i>
-                        <h3 class="text-xl font-bold">Play Games</h3>
+                    <div onclick="openGame('Dice Roll')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-dice text-4xl text-purple-400 mb-2"></i><h3 class="font-bold">Dice Roll</h3>
+                    </div>
+                    <div onclick="openGame('Aviator')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-plane-up text-4xl text-red-400 mb-2"></i><h3 class="font-bold">Aviator</h3>
+                    </div>
+                    <div onclick="openGame('Spin Wheel')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-circle-notch text-4xl text-pink-400 mb-2"></i><h3 class="font-bold">Spin Wheel</h3>
+                    </div>
+                    <div onclick="openGame('Color Predict')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-palette text-4xl text-blue-400 mb-2"></i><h3 class="font-bold">Colors</h3>
+                    </div>
+                    <div onclick="openGame('Mines')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-bomb text-4xl text-slate-400 mb-2"></i><h3 class="font-bold">Mines</h3>
+                    </div>
+                    <div onclick="openGame('Slots')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-7 text-4xl text-yellow-500 mb-2"></i><h3 class="font-bold">Slots</h3>
+                    </div>
+                    <div onclick="openGame('Roulette')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-compact-disc text-4xl text-red-500 mb-2"></i><h3 class="font-bold">Roulette</h3>
+                    </div>
+                    <div onclick="openGame('Plinko')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-filter text-4xl text-green-300 mb-2"></i><h3 class="font-bold">Plinko</h3>
+                    </div>
+                    <div onclick="openGame('Hi-Lo')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
+                        <i class="fa-solid fa-arrow-up-wide-short text-4xl text-blue-300 mb-2"></i><h3 class="font-bold">Hi-Lo</h3>
                     </div>
                 </div>
-                <button onclick="logout()" class="md:hidden mt-8 w-full bg-red-500/20 text-red-400 border border-red-500 p-3 rounded-xl font-bold"><i class="fa-solid fa-right-from-bracket"></i> Logout Account</button>
+
+                <!-- Generic Game Play Area -->
+                <div id="game-play-area" class="mt-8 glass p-6 rounded-2xl max-w-md mx-auto text-center hidden-section border-t-4 border-blue-500">
+                    <h3 id="active-game-title" class="text-2xl font-bold mb-4">Game</h3>
+                    <div class="bg-slate-900 p-6 rounded-xl mb-4 border border-slate-700">
+                        <span id="game-result-display" class="text-4xl font-bold text-white">?</span>
+                    </div>
+                    <label class="text-xs text-slate-400 text-left block mb-1">Bet Amount (Min 10)</label>
+                    <input type="number" id="game-bet" value="10" class="w-full p-3 bg-slate-800 rounded-xl outline-none border border-slate-600 text-center font-bold text-lg mb-4">
+                    <button onclick="playGenericGame()" class="w-full bg-blue-600 p-4 rounded-xl font-bold text-lg active:scale-95 transition">Play Now (x2 Win)</button>
+                </div>
             </div>
 
             <!-- Trading Page -->
             <div id="page-trading" class="page-section hidden-section">
-                <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-green-400">Live Trading</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-green-400"><i class="fa-solid fa-chart-line"></i> Trading</h2>
+                    <select id="trade-asset" class="bg-slate-800 p-2 rounded-lg border border-slate-600 outline-none">
+                        <option value="BTC/USD">BTC/USD</option>
+                        <option value="ETH/USD">ETH/USD</option>
+                        <option value="GOLD">GOLD</option>
+                        <option value="EUR/USD">EUR/USD</option>
+                        <option value="INDEX">INDEX 500</option>
+                    </select>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="col-span-2 glass p-4 rounded-2xl">
-                        <select id="trade-asset" class="bg-gray-800 p-3 rounded-xl text-white mb-4 w-full sm:w-auto">
-                            <option value="BTC/USD">BTC/USD</option>
-                            <option value="GOLD">GOLD</option>
-                        </select>
-                        <div class="text-3xl font-mono text-green-400 bg-gray-900 p-2 rounded text-center mb-4" id="live-price">0.00</div>
-                        <canvas id="tradingChart" height="200" class="w-full"></canvas>
+                    <div class="col-span-2 glass rounded-2xl p-2 h-[350px] md:h-[450px]">
+                        <!-- TradingView Container -->
+                        <div id="tv-chart" class="w-full h-full rounded-xl overflow-hidden"></div>
                     </div>
-                    <div class="glass p-5 rounded-2xl flex flex-col gap-4">
-                        <input type="number" id="trade-amount" placeholder="Amount" class="w-full p-3 bg-gray-800 rounded-xl outline-none">
-                        <select id="trade-duration" class="w-full p-3 bg-gray-800 rounded-xl outline-none">
-                            <option value="10">10 Sec (80%)</option>
-                        </select>
-                        <div class="flex gap-3">
-                            <button onclick="placeTrade('UP')" class="flex-1 bg-green-500 text-gray-900 p-4 rounded-xl font-bold">UP</button>
-                            <button onclick="placeTrade('DOWN')" class="flex-1 bg-red-500 text-white p-4 rounded-xl font-bold">DOWN</button>
+                    
+                    <div class="glass p-5 rounded-2xl">
+                        <div class="text-center mb-4">
+                            <p class="text-slate-400 text-sm">Live Price</p>
+                            <p class="text-3xl font-mono text-white bg-slate-900 py-2 rounded-xl border border-slate-700" id="live-price">0.00</p>
                         </div>
-                        <div id="active-trades" class="mt-4 space-y-2 text-sm max-h-40 overflow-y-auto"></div>
-                    </div>
-                </div>
-            </div>
+                        
+                        <label class="text-xs text-slate-400 block mb-1">Trade Amount (Min 100)</label>
+                        <div class="flex gap-2 mb-4">
+                            <button onclick="adjustTrade(-50)" class="bg-slate-800 px-4 rounded-xl border border-slate-600 font-bold hover:bg-slate-700">-</button>
+                            <input type="number" id="trade-amount" value="100" class="flex-1 p-3 bg-slate-900 rounded-xl outline-none border border-slate-600 text-center font-bold text-lg" readonly>
+                            <button onclick="adjustTrade(50)" class="bg-slate-800 px-4 rounded-xl border border-slate-600 font-bold hover:bg-slate-700">+</button>
+                        </div>
+                        
+                        <div class="flex gap-3 mb-6">
+                            <button onclick="placeTrade('CALL')" class="flex-1 bg-green-500 hover:bg-green-600 text-slate-900 p-4 rounded-xl font-bold text-xl active:scale-95 transition">CALL (UP)</button>
+                            <button onclick="placeTrade('PUT')" class="flex-1 bg-red-500 hover:bg-red-600 text-white p-4 rounded-xl font-bold text-xl active:scale-95 transition">PUT (DOWN)</button>
+                        </div>
 
-            <!-- Games Page -->
-            <div id="page-games" class="page-section hidden-section">
-                <h2 class="text-2xl sm:text-3xl font-bold mb-4">Casino Games</h2>
-                <div class="flex gap-3 mb-6 overflow-x-auto pb-3">
-                    <button onclick="openGame('coinflip')" class="bg-gray-800 px-5 py-3 rounded-xl font-bold text-yellow-400">Coin Flip</button>
-                    <button onclick="openGame('dice')" class="bg-gray-800 px-5 py-3 rounded-xl font-bold text-purple-400">Dice</button>
-                </div>
-
-                <div id="game-coinflip" class="game-view glass p-6 rounded-2xl text-center max-w-sm mx-auto">
-                    <h3 class="text-2xl font-bold mb-6 text-yellow-400">Coin Flip</h3>
-                    <div id="coin-result" class="w-28 h-28 bg-yellow-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl font-extrabold text-gray-900">?</div>
-                    <input type="number" id="coin-bet" placeholder="Bet Amount" class="w-full p-3 bg-gray-800 rounded-xl mb-4 text-center">
-                    <div class="flex gap-3">
-                        <button onclick="playCoinFlip('Heads')" class="flex-1 bg-blue-500 p-3 rounded-xl font-bold">Heads</button>
-                        <button onclick="playCoinFlip('Tails')" class="flex-1 bg-green-500 p-3 rounded-xl font-bold">Tails</button>
+                        <h3 class="text-sm font-bold border-b border-slate-700 pb-2 mb-2">Active Trades (30s)</h3>
+                        <div id="active-trades" class="space-y-2 text-sm max-h-32 overflow-y-auto pr-1"></div>
                     </div>
-                    <p id="coin-msg" class="mt-4 text-sm font-bold h-6"></p>
-                </div>
-
-                <div id="game-dice" class="game-view hidden-section glass p-6 rounded-2xl text-center max-w-sm mx-auto">
-                    <h3 class="text-2xl font-bold mb-4 text-purple-400">Dice Roll</h3>
-                    <div id="dice-result" class="text-7xl mb-6"><i class="fa-solid fa-dice"></i></div>
-                    <input type="number" id="dice-bet" placeholder="Bet Amount" class="w-full p-3 bg-gray-800 rounded-xl mb-4 text-center">
-                    <div class="flex gap-3">
-                        <button onclick="playDice('under')" class="flex-1 bg-red-500 p-3 rounded-xl font-bold">Under 50</button>
-                        <button onclick="playDice('over')" class="flex-1 bg-green-500 p-3 rounded-xl font-bold">Over 50</button>
-                    </div>
-                    <p id="dice-msg" class="mt-4 text-sm font-bold h-6"></p>
                 </div>
             </div>
 
             <!-- Wallet Page -->
             <div id="page-wallet" class="page-section hidden-section">
-                <h2 class="text-2xl sm:text-3xl font-bold mb-6">Wallet</h2>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <h2 class="text-2xl font-bold mb-6">My Wallet</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="glass p-6 rounded-2xl">
-                        <input type="number" id="dep-amount" class="w-full p-3 bg-gray-900 rounded-xl mb-2" placeholder="Deposit Amount">
-                        <button onclick="requestTransaction('deposit')" class="w-full bg-green-500 text-gray-900 p-3 rounded-xl font-bold mb-4">Submit Deposit</button>
+                        <label class="block text-sm mb-1 text-green-400">Request Deposit (Bkash/Nagad)</label>
+                        <input type="number" id="dep-amount" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-600 mb-2 outline-none" placeholder="Amount (৳)">
+                        <button onclick="reqDeposit()" class="w-full bg-green-600 p-3 rounded-xl font-bold mb-6">Submit Deposit</button>
                         
-                        <input type="number" id="with-amount" class="w-full p-3 bg-gray-900 rounded-xl mb-2" placeholder="Withdraw Amount">
-                        <button onclick="requestTransaction('withdraw')" class="w-full bg-red-500 text-white p-3 rounded-xl font-bold">Submit Withdraw</button>
+                        <label class="block text-sm mb-1 text-red-400">Request Withdrawal</label>
+                        <input type="number" id="with-amount" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-600 mb-2 outline-none" placeholder="Amount (৳)">
+                        <button onclick="reqWithdraw()" class="w-full bg-red-600 p-3 rounded-xl font-bold">Submit Withdraw</button>
                     </div>
-                    <div class="glass p-6 rounded-2xl">
-                        <h3 class="text-xl font-bold mb-4">History</h3>
-                        <div id="tx-history" class="space-y-3 max-h-80 overflow-y-auto"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Leaderboard Page -->
-            <div id="page-leaderboard" class="page-section hidden-section">
-                <h2 class="text-2xl font-bold mb-6 text-yellow-400">Top Players</h2>
-                <div class="glass p-4 rounded-2xl">
-                    <table class="w-full text-left">
-                        <tbody id="leaderboard-table" class="divide-y divide-gray-700"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Admin Page -->
-            <div id="page-admin" class="page-section hidden-section">
-                <h2 class="text-2xl font-bold mb-6 text-red-500">Admin Console</h2>
-                <div class="glass p-6 rounded-2xl mb-4">
-                    <h3 class="text-xl font-bold mb-4">Pending Requests</h3>
-                    <div id="admin-requests" class="space-y-3"></div>
                 </div>
             </div>
 
         </main>
     </div>
 
-    <!-- আমাদের কাস্টম জাভাস্ক্রিপ্ট ফাইল (কোনো type="module" নেই) -->
     <script src="app.js"></script>
 </body>
 </html>
