@@ -1,10 +1,8 @@
 // ====== Firebase Configuration & Setup ======
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-// গুগল অথেন্টিকেশন ইমপোর্ট বাদ দেওয়া হয়েছে
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, orderBy, limit, onSnapshot, getDocs, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// Config provided
 const firebaseConfig = {
   apiKey: "AIzaSyB2Gv7FXkDP5AJEm2MrZBEin6rN8YZwnK8",
   authDomain: "betbd-be722.firebaseapp.com",
@@ -15,95 +13,105 @@ const firebaseConfig = {
   measurementId: "G-VE56XQM64X"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// Global State
+let app, auth, db;
 let currentUser = null;
 let userData = null;
 let userDocRef = null;
 
+// Error Handling block
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    console.log("Firebase Initialized Successfully");
+} catch (error) {
+    alert("Firebase Error: " + error.message);
+}
+
 // ====== Authentication Logic ======
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        currentUser = user;
-        userDocRef = doc(db, "users", user.uid);
-        
-        // Check if user exists in Firestore
-        const docSnap = await getDoc(userDocRef);
-        if (!docSnap.exists()) {
-            // Create new user wallet setup
-            userData = {
-                email: user.email,
-                balance: 1000, // 1000 demo coins
-                role: 'user',
-                createdAt: serverTimestamp()
-            };
-            await setDoc(userDocRef, userData);
-        } else {
-            userData = docSnap.data();
-        }
+if(auth) {
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            currentUser = user;
+            userDocRef = doc(db, "users", user.uid);
+            
+            try {
+                const docSnap = await getDoc(userDocRef);
+                if (!docSnap.exists()) {
+                    userData = {
+                        email: user.email,
+                        balance: 1000, 
+                        role: 'user',
+                        createdAt: serverTimestamp()
+                    };
+                    await setDoc(userDocRef, userData);
+                } else {
+                    userData = docSnap.data();
+                }
 
-        // Setup Realtime Balance Listener
-        onSnapshot(userDocRef, (doc) => {
-            userData = doc.data();
-            document.getElementById('user-balance').innerText = userData.balance.toFixed(2);
-            if(userData.role === 'admin') {
-                document.getElementById('admin-btn').classList.remove('hidden-section');
+                onSnapshot(userDocRef, (doc) => {
+                    userData = doc.data();
+                    document.getElementById('user-balance').innerText = userData.balance.toFixed(2);
+                    if(userData.role === 'admin') {
+                        document.getElementById('admin-btn').classList.remove('hidden-section');
+                    }
+                });
+
+                document.getElementById('auth-section').classList.add('hidden-section');
+                document.getElementById('app-section').classList.remove('hidden-section');
+                initApp();
+            } catch (err) {
+                console.error("Firestore error:", err);
             }
-        });
+        } else {
+            document.getElementById('auth-section').classList.remove('hidden-section');
+            document.getElementById('app-section').classList.add('hidden-section');
+        }
+    });
+}
 
-        // Hide Auth, Show App
-        document.getElementById('auth-section').classList.add('hidden-section');
-        document.getElementById('app-section').classList.remove('hidden-section');
-        
-        initApp();
-    } else {
-        // Show Auth, Hide App
-        document.getElementById('auth-section').classList.remove('hidden-section');
-        document.getElementById('app-section').classList.add('hidden-section');
-    }
-});
-
-// ইমেইল লগিন ফাংশন
+// বাটনগুলোর ফাংশনগুলো গ্লোবাল উইন্ডোতে সেট করা হলো
 window.loginWithEmail = () => {
-    const e = document.getElementById('email').value;
-    const p = document.getElementById('password').value;
-    if(!e || !p) return alert("Please enter email and password");
-    signInWithEmailAndPassword(auth, e, p).catch(err => alert("Login Failed: " + err.message));
+    try {
+        const e = document.getElementById('email').value;
+        const p = document.getElementById('password').value;
+        if(!e || !p) return alert("Please enter email and password");
+        signInWithEmailAndPassword(auth, e, p).then(() => {
+            alert("Login Successful!");
+        }).catch(err => alert("Login Failed: " + err.message));
+    } catch (err) {
+        alert("System Error: " + err.message);
+    }
 };
 
-// ইমেইল রেজিস্টার ফাংশন
 window.registerWithEmail = () => {
-    const e = document.getElementById('email').value;
-    const p = document.getElementById('password').value;
-    if(!e || !p) return alert("Please enter email and password");
-    if(p.length < 6) return alert("Password must be at least 6 characters");
-    createUserWithEmailAndPassword(auth, e, p).catch(err => alert("Registration Failed: " + err.message));
+    try {
+        const e = document.getElementById('email').value;
+        const p = document.getElementById('password').value;
+        if(!e || !p) return alert("Please enter email and password");
+        if(p.length < 6) return alert("Password must be at least 6 characters");
+        createUserWithEmailAndPassword(auth, e, p).then(() => {
+            alert("Account Created Successfully!");
+        }).catch(err => alert("Registration Failed: " + err.message));
+    } catch (err) {
+        alert("System Error: " + err.message);
+    }
 };
 
-// পাসওয়ার্ড রিসেট ফাংশন
 window.resetPassword = () => {
     const e = document.getElementById('email').value;
     if(!e) return alert("Please enter your email address first");
     sendPasswordResetEmail(auth, e).then(() => alert("Password reset link sent to your email!")).catch(err => alert(err.message));
 };
 
-// লগআউট
 window.logout = () => signOut(auth);
 
-
-// ====== App Navigation & UI ======
 window.showPage = (pageId) => {
     document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden-section'));
     document.getElementById('page-' + pageId).classList.remove('hidden-section');
-    
     if(pageId === 'leaderboard') loadLeaderboard();
     if(pageId === 'wallet') loadTransactionHistory();
     if(pageId === 'admin') loadAdminPanel();
-    
-    // மொবাইলে পেজ পরিবর্তন করলে স্ক্রল টপে নিয়ে যাওয়া
     window.scrollTo(0,0);
 };
 
@@ -112,6 +120,7 @@ window.openGame = (gameId) => {
     document.getElementById('game-' + gameId).classList.remove('hidden-section');
 };
 
+// ... (আপনার আগের কোডের বাকি গেম, ওয়ালেট এবং এডমিন প্যানেলের ফাংশনগুলো হুবহু নিচে বসিয়ে দিন)
 
 // ====== Helper: Transaction Logging & Balance Update ======
 async function processTransaction(amount, type, description) {
