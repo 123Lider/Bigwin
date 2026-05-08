@@ -16,28 +16,30 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; touch-action: pan-y; background: #0f172a; color: white; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        body { font-family: 'Segoe UI', sans-serif; touch-action: pan-y; background: #0f172a; color: white; margin: 0; padding: 0; }
+        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
         .hidden-section { display: none !important; }
         .toast-enter { animation: slideIn 0.3s ease-out forwards; }
         @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        /* App layout constraints */
+        .app-container { max-width: 600px; margin: 0 auto; background: #0f172a; min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
     </style>
 </head>
-<body>
+<body class="bg-black">
 
-    <!-- Custom UI Toast/Popup Notification -->
-    <div id="toast-container" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none"></div>
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none"></div>
 
     <!-- Auth Section -->
-    <div id="auth-section" class="flex items-center justify-center min-h-screen p-4">
-        <div class="glass p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
+    <div id="auth-section" class="flex items-center justify-center min-h-screen p-4 app-container">
+        <div class="glass p-8 rounded-3xl shadow-2xl w-full text-center">
             <h1 class="text-4xl font-extrabold text-blue-500 mb-6"><i class="fa-solid fa-bolt"></i> PRO<span class="text-white">X</span></h1>
             
             <!-- Login Form -->
             <div id="login-form" class="space-y-4">
-                <input type="email" id="log-email" placeholder="Email (Gmail)" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <input type="email" id="log-email" placeholder="Email" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
                 <input type="password" id="log-pass" placeholder="Password" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
                 <button onclick="loginUser()" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-xl font-bold text-lg transition shadow-lg">Login</button>
                 <p class="text-sm text-slate-400 mt-2 cursor-pointer" onclick="toggleAuth('reg')">Don't have an account? <span class="text-blue-400">Create One</span></p>
@@ -46,8 +48,8 @@
             <!-- Register Form -->
             <div id="reg-form" class="space-y-4 hidden-section">
                 <input type="text" id="reg-name" placeholder="Full Name" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
-                <input type="email" id="reg-email" placeholder="Email (Gmail)" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
-                <input type="password" id="reg-pass" placeholder="New Password" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <input type="email" id="reg-email" placeholder="Email" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
+                <input type="password" id="reg-pass" placeholder="Password" class="w-full p-3 rounded-xl bg-slate-800 text-white outline-none border border-slate-600 focus:border-blue-500">
                 <button onclick="registerUser()" class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-xl font-bold text-lg transition shadow-lg">Create Account</button>
                 <p class="text-sm text-slate-400 mt-2 cursor-pointer" onclick="toggleAuth('log')">Already have an account? <span class="text-blue-400">Login</span></p>
             </div>
@@ -55,139 +57,206 @@
     </div>
 
     <!-- Main App Layout -->
-    <div id="app-section" class="hidden-section flex flex-col md:flex-row min-h-screen">
+    <div id="app-section" class="hidden-section app-container pb-20">
         
-        <!-- Sidebar -->
-        <nav class="w-full md:w-20 lg:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-4 shadow-xl md:h-screen sticky top-0 z-40">
-            <h2 class="text-2xl font-bold text-blue-500 text-center hidden lg:block mb-4"><i class="fa-solid fa-bolt"></i> PROX</h2>
+        <!-- Top Header -->
+        <header class="glass sticky top-0 z-40 px-4 py-3 flex justify-between items-center border-b border-slate-800">
+            <h1 class="text-2xl font-extrabold text-blue-500"><i class="fa-solid fa-bolt"></i> PRO<span class="text-white">X</span></h1>
             
-            <div class="bg-slate-800 p-3 rounded-xl text-center border border-slate-700">
-                <p class="text-[10px] text-slate-400 uppercase">Balance</p>
-                <p class="text-lg font-bold text-green-400">৳ <span id="user-balance">0.00</span></p>
+            <div class="flex items-center gap-4">
+                <div class="bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-wallet text-green-400"></i>
+                    <span class="font-bold text-white text-sm">৳ <span id="user-balance">0.00</span></span>
+                </div>
+                <button onclick="toggleMenu()" class="text-2xl text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-bars-staggered"></i>
+                </button>
             </div>
-            
-            <div class="flex md:flex-col overflow-x-auto md:overflow-visible gap-2 pb-2 md:pb-0 hide-scroll">
-                <button onclick="showPage('dashboard')" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-left whitespace-nowrap"><i class="fa-solid fa-house lg:mr-2"></i> <span class="hidden lg:inline">Dashboard</span></button>
-                <button onclick="showPage('trading')" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-left whitespace-nowrap"><i class="fa-solid fa-chart-candlestick text-green-400 lg:mr-2"></i> <span class="hidden lg:inline">Trading</span></button>
-                <button onclick="showPage('wallet')" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-left whitespace-nowrap"><i class="fa-solid fa-wallet text-yellow-400 lg:mr-2"></i> <span class="hidden lg:inline">Wallet</span></button>
+        </header>
+
+        <!-- Sidebar / Hamburger Menu Overlay -->
+        <div id="side-menu-overlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/60 z-40 hidden-section backdrop-blur-sm"></div>
+        <div id="side-menu" class="fixed top-0 right-0 h-full w-64 bg-slate-900 border-l border-slate-800 transform translate-x-full transition-transform duration-300 z-50 shadow-2xl flex flex-col">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-300">Menu</h3>
+                <button onclick="toggleMenu()" class="text-2xl text-slate-400 hover:text-red-400"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <button onclick="logout()" class="mt-auto bg-red-500/20 text-red-400 p-3 rounded-xl font-bold border border-red-500/50"><i class="fa-solid fa-power-off"></i> <span class="hidden lg:inline">Logout</span></button>
-        </nav>
+            <div class="p-4 space-y-3 flex-1 overflow-y-auto">
+                <button onclick="showPage('deposit'); toggleMenu()" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-arrow-down text-green-400 w-6"></i> Deposit</button>
+                <button onclick="showPage('withdraw'); toggleMenu()" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-arrow-up text-red-400 w-6"></i> Withdraw</button>
+                <button onclick="showPage('history'); toggleMenu()" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-clock-rotate-left text-blue-400 w-6"></i> History</button>
+            </div>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="logout()" class="w-full bg-red-500/20 text-red-400 p-3 rounded-xl font-bold border border-red-500/50 hover:bg-red-500/30 transition"><i class="fa-solid fa-power-off"></i> Logout</button>
+            </div>
+        </div>
 
         <!-- Main Content -->
-        <main class="flex-1 p-4 md:p-6 overflow-y-auto pb-24 md:pb-6">
+        <main class="p-4">
             
             <!-- Dashboard / Games -->
             <div id="page-dashboard" class="page-section">
-                <h2 class="text-2xl font-bold mb-6">Live Games (Min: ৳10)</h2>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <!-- 10 Games -->
-                    <div onclick="openGame('Coin Flip')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-coins text-4xl text-yellow-400 mb-2"></i><h3 class="font-bold">Coin Flip</h3>
+                <h2 class="text-xl font-bold mb-4 text-slate-200">Live Games</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <!-- Games List -->
+                    <div onclick="window.location.href='coinflip.html'" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-coins text-3xl text-yellow-400 mb-2"></i><h3 class="font-bold text-sm">Coin Flip</h3>
                     </div>
-                    <div onclick="openGame('Dice Roll')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-dice text-4xl text-purple-400 mb-2"></i><h3 class="font-bold">Dice Roll</h3>
+                    <div onclick="openGame('Dice Roll')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-dice text-3xl text-purple-400 mb-2"></i><h3 class="font-bold text-sm">Dice Roll</h3>
                     </div>
-                    <div onclick="window.location.href='aviator.html'" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-plane-up text-4xl text-red-400 mb-2"></i><h3 class="font-bold">Aviator</h3>
+                    <div onclick="window.location.href='aviator.html'" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-plane-up text-3xl text-red-400 mb-2"></i><h3 class="font-bold text-sm">Aviator</h3>
                     </div>
-                    <div onclick="openGame('Spin Wheel')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-circle-notch text-4xl text-pink-400 mb-2"></i><h3 class="font-bold">Spin Wheel</h3>
+                    <div onclick="openGame('Spin Wheel')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-circle-notch text-3xl text-pink-400 mb-2"></i><h3 class="font-bold text-sm">Spin Wheel</h3>
                     </div>
-                    <div onclick="openGame('Color Predict')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-palette text-4xl text-blue-400 mb-2"></i><h3 class="font-bold">Colors</h3>
+                    <div onclick="openGame('Color Predict')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-palette text-3xl text-blue-400 mb-2"></i><h3 class="font-bold text-sm">Colors</h3>
                     </div>
-                    <div onclick="openGame('Mines')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-bomb text-4xl text-slate-400 mb-2"></i><h3 class="font-bold">Mines</h3>
+                    <div onclick="openGame('Mines')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-bomb text-3xl text-slate-400 mb-2"></i><h3 class="font-bold text-sm">Mines</h3>
                     </div>
-                    <div onclick="openGame('Slots')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-7 text-4xl text-yellow-500 mb-2"></i><h3 class="font-bold">Slots</h3>
-                    </div>
-                    <div onclick="openGame('Roulette')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-compact-disc text-4xl text-red-500 mb-2"></i><h3 class="font-bold">Roulette</h3>
-                    </div>
-                    <div onclick="openGame('Plinko')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-filter text-4xl text-green-300 mb-2"></i><h3 class="font-bold">Plinko</h3>
-                    </div>
-                    <div onclick="openGame('Hi-Lo')" class="glass p-4 rounded-xl text-center cursor-pointer hover:bg-slate-800">
-                        <i class="fa-solid fa-arrow-up-wide-short text-4xl text-blue-300 mb-2"></i><h3 class="font-bold">Hi-Lo</h3>
-                    </div>
-                </div>
-
-                <!-- Generic Game Play Area -->
-                <div id="game-play-area" class="mt-8 glass p-6 rounded-2xl max-w-md mx-auto text-center hidden-section border-t-4 border-blue-500">
-                    <h3 id="active-game-title" class="text-2xl font-bold mb-4">Game</h3>
-                    <div class="bg-slate-900 p-6 rounded-xl mb-4 border border-slate-700">
-                        <span id="game-result-display" class="text-4xl font-bold text-white">?</span>
-                    </div>
-                    <label class="text-xs text-slate-400 text-left block mb-1">Bet Amount (Min 10)</label>
-                    <input type="number" id="game-bet" value="10" class="w-full p-3 bg-slate-800 rounded-xl outline-none border border-slate-600 text-center font-bold text-lg mb-4">
-                    <button onclick="playGenericGame()" class="w-full bg-blue-600 p-4 rounded-xl font-bold text-lg active:scale-95 transition">Play Now (x2 Win)</button>
                 </div>
             </div>
 
             <!-- Trading Page -->
             <div id="page-trading" class="page-section hidden-section">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold text-green-400"><i class="fa-solid fa-chart-line"></i> Trading</h2>
-                    <select id="trade-asset" class="bg-slate-800 p-2 rounded-lg border border-slate-600 outline-none">
+                    <h2 class="text-xl font-bold text-green-400"><i class="fa-solid fa-chart-line"></i> Trading</h2>
+                    <select id="trade-asset" class="bg-slate-800 p-2 rounded-lg border border-slate-600 outline-none text-sm">
                         <option value="BTC/USD">BTC/USD</option>
                         <option value="ETH/USD">ETH/USD</option>
-                        <option value="GOLD">GOLD</option>
-                        <option value="EUR/USD">EUR/USD</option>
-                        <option value="INDEX">INDEX 500</option>
                     </select>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="col-span-2 glass rounded-2xl p-2 h-[350px] md:h-[450px]">
-                        <!-- TradingView Container -->
-                        <div id="tv-chart" class="w-full h-full rounded-xl overflow-hidden"></div>
+                <div class="glass rounded-xl p-2 h-[300px] mb-4">
+                    <div id="tv-chart" class="w-full h-full rounded-lg overflow-hidden"></div>
+                </div>
+                
+                <div class="glass p-4 rounded-xl">
+                    <div class="text-center mb-4">
+                        <p class="text-slate-400 text-xs">Live Price</p>
+                        <p class="text-2xl font-mono text-white bg-slate-900 py-2 rounded-xl border border-slate-700" id="live-price">0.00</p>
                     </div>
-                    
-                    <div class="glass p-5 rounded-2xl">
-                        <div class="text-center mb-4">
-                            <p class="text-slate-400 text-sm">Live Price</p>
-                            <p class="text-3xl font-mono text-white bg-slate-900 py-2 rounded-xl border border-slate-700" id="live-price">0.00</p>
-                        </div>
-                        
-                        <label class="text-xs text-slate-400 block mb-1">Trade Amount (Min 100)</label>
-                        <div class="flex gap-2 mb-4">
-                            <button onclick="adjustTrade(-50)" class="bg-slate-800 px-4 rounded-xl border border-slate-600 font-bold hover:bg-slate-700">-</button>
-                            <input type="number" id="trade-amount" value="100" class="flex-1 p-3 bg-slate-900 rounded-xl outline-none border border-slate-600 text-center font-bold text-lg" readonly>
-                            <button onclick="adjustTrade(50)" class="bg-slate-800 px-4 rounded-xl border border-slate-600 font-bold hover:bg-slate-700">+</button>
-                        </div>
-                        
-                        <div class="flex gap-3 mb-6">
-                            <button onclick="placeTrade('CALL')" class="flex-1 bg-green-500 hover:bg-green-600 text-slate-900 p-4 rounded-xl font-bold text-xl active:scale-95 transition">CALL (UP)</button>
-                            <button onclick="placeTrade('PUT')" class="flex-1 bg-red-500 hover:bg-red-600 text-white p-4 rounded-xl font-bold text-xl active:scale-95 transition">PUT (DOWN)</button>
-                        </div>
-
-                        <h3 class="text-sm font-bold border-b border-slate-700 pb-2 mb-2">Active Trades (30s)</h3>
-                        <div id="active-trades" class="space-y-2 text-sm max-h-32 overflow-y-auto pr-1"></div>
+                    <div class="flex gap-2 mb-4">
+                        <input type="number" id="trade-amount" placeholder="Amount (Min 100)" class="w-full p-3 bg-slate-900 rounded-xl outline-none border border-slate-600 text-center font-bold">
+                    </div>
+                    <div class="flex gap-3 mb-2">
+                        <button onclick="placeTrade('CALL')" class="flex-1 bg-green-500 hover:bg-green-600 text-slate-900 p-3 rounded-xl font-bold text-lg active:scale-95 transition">CALL (UP)</button>
+                        <button onclick="placeTrade('PUT')" class="flex-1 bg-red-500 hover:bg-red-600 text-white p-3 rounded-xl font-bold text-lg active:scale-95 transition">PUT (DOWN)</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Wallet Page -->
-            <div id="page-wallet" class="page-section hidden-section">
-                <h2 class="text-2xl font-bold mb-6">My Wallet</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="glass p-6 rounded-2xl">
-                        <label class="block text-sm mb-1 text-green-400">Request Deposit (Bkash/Nagad)</label>
-                        <input type="number" id="dep-amount" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-600 mb-2 outline-none" placeholder="Amount (৳)">
-                        <button onclick="reqDeposit()" class="w-full bg-green-600 p-3 rounded-xl font-bold mb-6">Submit Deposit</button>
-                        
-                        <label class="block text-sm mb-1 text-red-400">Request Withdrawal</label>
-                        <input type="number" id="with-amount" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-600 mb-2 outline-none" placeholder="Amount (৳)">
-                        <button onclick="reqWithdraw()" class="w-full bg-red-600 p-3 rounded-xl font-bold">Submit Withdraw</button>
+            <!-- Deposit Page -->
+            <div id="page-deposit" class="page-section hidden-section">
+                <h2 class="text-xl font-bold mb-4 text-green-400"><i class="fa-solid fa-arrow-down"></i> Deposit Money</h2>
+                <div class="glass p-5 rounded-2xl space-y-4">
+                    
+                    <div>
+                        <label class="text-sm text-slate-400 block mb-1">Select Payment Method</label>
+                        <select id="dep-method" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none" onchange="updateAdminNumber()">
+                            <option value="bKash">bKash Personal</option>
+                            <option value="Nagad">Nagad Personal</option>
+                            <option value="Rocket">Rocket Personal</option>
+                        </select>
+                    </div>
+
+                    <div class="bg-blue-900/30 border border-blue-500/50 p-4 rounded-xl text-center">
+                        <p class="text-sm text-slate-300 mb-1">Send money to this <span id="method-name" class="font-bold text-white">bKash</span> number:</p>
+                        <div class="flex items-center justify-center gap-2">
+                            <!-- Admin number will be fetched from database -->
+                            <span id="admin-payment-number" class="text-2xl font-bold text-blue-400 tracking-wider">017XXXXXXXX</span>
+                            <button onclick="copyAdminNumber()" class="bg-slate-800 p-2 rounded-lg text-sm hover:bg-slate-700"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-sm text-slate-400 block mb-1">Amount Sent (৳)</label>
+                        <input type="number" id="real-dep-amount" placeholder="e.g. 500" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-400 block mb-1">Your Sender Number</label>
+                        <input type="text" id="dep-sender" placeholder="01XXXXXXXXX" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-400 block mb-1">Transaction ID (TrxID)</label>
+                        <input type="text" id="dep-trx" placeholder="e.g. 8KJB83HD" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none uppercase">
+                    </div>
+
+                    <button onclick="submitRealDeposit()" class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-xl font-bold text-lg mt-2">Submit Deposit Request</button>
+                </div>
+            </div>
+
+            <!-- Withdraw Page -->
+            <div id="page-withdraw" class="page-section hidden-section">
+                <h2 class="text-xl font-bold mb-4 text-red-400"><i class="fa-solid fa-arrow-up"></i> Withdraw Money</h2>
+                <div class="glass p-5 rounded-2xl space-y-4">
+                    <div>
+                        <label class="text-sm text-slate-400 block mb-1">Withdraw Method</label>
+                        <select id="with-method" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none">
+                            <option value="bKash">bKash</option>
+                            <option value="Nagad">Nagad</option>
+                            <option value="Rocket">Rocket</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-400 block mb-1">Your Account Number</label>
+                        <input type="text" id="with-number" placeholder="01XXXXXXXXX" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-400 block mb-1">Amount (৳)</label>
+                        <input type="number" id="real-with-amount" placeholder="Min 500" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none">
+                    </div>
+
+                    <button onclick="submitRealWithdraw()" class="w-full bg-red-600 hover:bg-red-700 p-3 rounded-xl font-bold text-lg mt-2">Submit Withdraw Request</button>
+                </div>
+            </div>
+
+            <!-- History Page -->
+            <div id="page-history" class="page-section hidden-section">
+                <h2 class="text-xl font-bold mb-4 text-blue-400"><i class="fa-solid fa-clock-rotate-left"></i> Transaction History</h2>
+                
+                <div class="flex gap-2 mb-4">
+                    <button onclick="switchHistoryTab('deposit')" id="tab-dep" class="flex-1 bg-blue-600 p-2 rounded-lg font-bold text-sm">Deposit</button>
+                    <button onclick="switchHistoryTab('withdraw')" id="tab-with" class="flex-1 bg-slate-800 text-slate-400 p-2 rounded-lg font-bold text-sm">Withdraw</button>
+                </div>
+
+                <div id="history-content" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                    <!-- History Items will be populated here by JS -->
+                    <div class="glass p-3 rounded-xl flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-sm">bKash (Trx: 8KJSDFG)</p>
+                            <p class="text-xs text-slate-400">12 Oct, 2:30 PM</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-green-400 font-bold">+৳ 500</p>
+                            <span class="text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Pending</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
         </main>
-    </div>
 
-    <script src="app.js"></script>
+        <!-- Bottom Navigation (App Style) -->
+        <nav class="fixed bottom-0 w-full max-w-[600px] bg-slate-900 border-t border-slate-800 flex justify-around p-3 z-40">
+            <button onclick="showPage('dashboard')" class="flex flex-col items-center text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-house text-xl mb-1"></i>
+                <span class="text-[10px]">Home</span>
+            </button>
+            <button onclick="showPage('trading')" class="flex flex-col items-center text-slate-400 hover:text-green-400 transition">
+                <i class="fa-solid fa-chart-candlestick text-xl mb-1"></i>
+                <span class="text-[10px]">Trade</span>
+            </button>
+            <button onclick="showPage('deposit')" class="flex flex-col items-center text-slate-400 hover:text-blue-400 transition">
+                <i class="fa-solid fa-wallet text-xl mb-1"></i>
+                <span class="text-[10px]">Wallet</span>
+            </button>
+        </nav>
+
+    </div>
+ <script src="app.js"></script>
 </body>
 </html>
