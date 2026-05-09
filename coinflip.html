@@ -179,245 +179,127 @@
     </div>
 
     <script>
-        // ====== Firebase PROX Setup ======
-        const firebaseConfig = {
-            apiKey: "AIzaSyB2Gv7FXkDP5AJEm2MrZBEin6rN8YZwnK8",
-            authDomain: "betbd-be722.firebaseapp.com",
-            projectId: "betbd-be722"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyB2Gv7FXkDP5AJEm2MrZBEin6rN8YZwnK8",
+        authDomain: "betbd-be722.firebaseapp.com",
+        projectId: "betbd-be722"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        let currentUser = null;
-        let balance = 0;
-        let myGameHistory = [];
-
-        auth.onAuthStateChanged(user => {
-            if(user) {
-                currentUser = user;
-                db.collection("users").doc(user.uid).onSnapshot(doc => {
-                    if(doc.exists) {
-                        balance = doc.data().balance;
-                        document.getElementById('balance').innerText = balance.toFixed(2);
-                    }
-                });
-                document.getElementById('pageLoader').style.display = 'none';
-                startTimerLoop();
-            } else {
-                window.location.href = 'index.html';
-            }
-        });
-
-        // ====== 3D Coin Edge Generation ======
-        const coinSpin = document.getElementById('coinSpin');
-        for(let i = 5; i >= -5; i--) {
-            if(i !== 6 && i !== -6) { 
-                let edge = document.createElement('div');
-                edge.className = 'coin-edge';
-                edge.style.transform = `translateZ(${i}px)`;
-                coinSpin.appendChild(edge);
-            }
-        }
-
-        // ====== Variables & Audio ======
-        let betAmount = 10;
-        const minBet = 10;
-        const maxBet = 500;
-        
-        let currentBet = null;
-        let timeLeft = 10;
-        let isFlipping = false;
-        
-        let rotationX = 0;
-        let rotationY = 0;
-        let soundOn = false;
-
-        const betAmountEl = document.getElementById('betAmount');
-        const timerEl = document.getElementById('timer');
-        const btnRed = document.getElementById('btnRed');
-        const btnBlue = document.getElementById('btnBlue');
-        const statusMsg = document.getElementById('statusMsg');
-        const coinJump = document.getElementById('coinJump');
-        
-        const tickSound = document.getElementById('tickSound');
-        const dropSound = document.getElementById('dropSound');
-        const winSound = document.getElementById('winSound');
-
-        // ====== Menu & Sound Logic ======
-        function toggleMenu() {
-            const m = document.getElementById('sideMenu');
-            const o = document.getElementById('menuOverlay');
-            m.classList.toggle('open');
-            o.style.display = m.classList.contains('open') ? 'block' : 'none';
-        }
-
-        function toggleSound() {
-            soundOn = !soundOn;
-            document.getElementById('soundStatus').innerText = soundOn ? "ON" : "OFF";
-            document.getElementById('soundStatus').style.color = soundOn ? "#96c93d" : "#ff3333";
-            if(soundOn) { tickSound.play().catch(()=>{}); tickSound.pause(); } // Unlock audio
-        }
-
-        function playSfx(audio) {
-            if(soundOn) { audio.currentTime = 0; audio.play().catch(()=>{}); }
-        }
-
-        // ====== History Modal ======
-        function openHistory() {
-            toggleMenu();
-            document.getElementById('historyModal').style.display = 'flex';
-            updateHistoryUI();
-        }
-        function closeHistory() { document.getElementById('historyModal').style.display = 'none'; }
-        
-        function updateHistoryUI() {
-            const tb = document.getElementById('histBody');
-            if(myGameHistory.length === 0) { tb.innerHTML = `<tr><td colspan="3" style="text-align:center;">No history found</td></tr>`; return; }
-            tb.innerHTML = '';
-            myGameHistory.forEach(h => {
-                let colorBet = h.color === 'red' ? '<span style="color:#ff4b4b;font-weight:bold">RED</span>' : '<span style="color:#4b7bff;font-weight:bold">BLUE</span>';
-                let colorRes = h.result === 'red' ? '<span style="color:#ff4b4b;font-weight:bold">RED</span>' : '<span style="color:#4b7bff;font-weight:bold">BLUE</span>';
-                let profit = h.isWin ? `<span style="color:#96c93d">+৳${h.winAmt.toFixed(2)}</span>` : `<span style="color:#ff3333">-৳${h.betAmt}</span>`;
-                tb.innerHTML += `<tr><td>৳${h.betAmt} on ${colorBet}</td><td>${colorRes}</td><td>${profit}</td></tr>`;
+    let currentUser = null, balance = 0;
+    auth.onAuthStateChanged(user => {
+        if(user) {
+            currentUser = user;
+            db.collection("users").doc(user.uid).onSnapshot(doc => {
+                if(doc.exists) { balance = doc.data().balance; document.getElementById('balance').innerText = balance.toFixed(2); }
             });
-        }
+            document.getElementById('pageLoader').style.display = 'none';
+        } else window.location.href = 'index.html';
+    });
 
-        // ====== Betting Controls ======
-        function changeAmount(val) {
-            if (isFlipping || currentBet !== null) return; 
-            let newAmount = betAmount + val;
-            if (newAmount >= minBet && newAmount <= maxBet) {
-                betAmount = newAmount;
-                betAmountEl.innerText = betAmount;
-            }
-        }
+    const coinSpin = document.getElementById('coinSpin');
+    for(let i = 5; i >= -5; i--) { if(i !== 6 && i !== -6) { let edge = document.createElement('div'); edge.className = 'coin-edge'; edge.style.transform = `translateZ(${i}px)`; coinSpin.appendChild(edge); } }
 
-        function placeBet(color) {
-            if (isFlipping || currentBet !== null) return;
-            if (balance < betAmount) return alert("Insufficient Balance!");
+    let betAmount = 10, currentBet = null, isFlipping = false, rotationX = 0, rotationY = 0, soundOn = false;
+    const betAmountEl = document.getElementById('betAmount'), timerEl = document.getElementById('timer'), btnRed = document.getElementById('btnRed'), btnBlue = document.getElementById('btnBlue'), statusMsg = document.getElementById('statusMsg'), coinJump = document.getElementById('coinJump');
+    const tickSound = document.getElementById('tickSound'), dropSound = document.getElementById('dropSound'), winSound = document.getElementById('winSound');
 
-            // Deduct immediately on Firebase
-            db.collection("users").doc(currentUser.uid).update({ balance: balance - betAmount });
+    function toggleMenu() { const m = document.getElementById('sideMenu'), o = document.getElementById('menuOverlay'); m.classList.toggle('open'); o.style.display = m.classList.contains('open') ? 'block' : 'none'; }
+    function toggleSound() { soundOn = !soundOn; document.getElementById('soundStatus').innerText = soundOn ? "ON" : "OFF"; document.getElementById('soundStatus').style.color = soundOn ? "#96c93d" : "#ff3333"; }
+    function playSfx(audio) { if(soundOn) { audio.currentTime = 0; audio.play().catch(()=>{}); } }
+    function closeHistory() { document.getElementById('historyModal').style.display = 'none'; }
 
-            currentBet = color;
-            statusMsg.innerText = `৳${betAmount} on ${color.toUpperCase()} Placed!`;
-            statusMsg.style.color = color === 'red' ? '#ff4b4b' : '#4b7bff';
+    function changeAmount(val) {
+        if (isFlipping || currentBet !== null) return; 
+        let newAmount = betAmount + val;
+        if (newAmount >= 10 && newAmount <= 10000) { betAmount = newAmount; betAmountEl.innerText = betAmount; }
+    }
 
-            if (color === 'red') { btnBlue.disabled = true; btnRed.innerText = "LOCKED"; } 
-            else { btnRed.disabled = true; btnBlue.innerText = "LOCKED"; }
-        }
+    function placeBet(color) {
+        if (isFlipping || currentBet !== null) return;
+        if (balance < betAmount) return alert("Insufficient Balance!");
+        db.collection("users").doc(currentUser.uid).update({ balance: balance - betAmount });
+        currentBet = color;
+        statusMsg.innerText = `৳${betAmount} on ${color.toUpperCase()} Placed!`;
+        statusMsg.style.color = color === 'red' ? '#ff4b4b' : '#4b7bff';
+        if (color === 'red') { btnBlue.disabled = true; btnRed.innerText = "LOCKED"; } else { btnRed.disabled = true; btnBlue.innerText = "LOCKED"; }
+    }
 
-        // ====== Game Engine (Timer & Logic) ======
-        function startTimerLoop() {
-            setInterval(() => {
-                if (isFlipping) return;
-                timeLeft--;
-                timerEl.innerText = timeLeft;
+    // ====== LIVE SYNC WITH FIREBASE ======
+    let timerInterval = null;
 
-                if (timeLeft <= 3 && timeLeft > 0) {
-                    timerEl.classList.add("timer-alert");
-                    playSfx(tickSound);
-                } else {
-                    timerEl.classList.remove("timer-alert");
-                }
+    db.collection("games").doc("coinflip").onSnapshot(doc => {
+        if (!doc.exists) return;
+        let data = doc.data();
 
-                if (timeLeft <= 0) {
-                    timerEl.classList.remove("timer-alert");
-                    startFlip();
-                }
-            }, 1000);
-        }
-
-        function startFlip() {
-            isFlipping = true;
-            btnRed.disabled = true;
-            btnBlue.disabled = true;
-            statusMsg.innerText = "Coin is spinning...";
-            statusMsg.style.color = "#ffcc00";
-
-            // ====== THE GAME BRAIN (Company Logic) ======
-            let result;
-            if (currentBet === 'red') {
-                // User bet Red -> Company favors Blue (60% chance to lose)
-                result = Math.random() < 0.4 ? 'red' : 'blue'; 
-            } else if (currentBet === 'blue') {
-                // User bet Blue -> Company favors Red (60% chance to lose)
-                result = Math.random() < 0.4 ? 'blue' : 'red';
-            } else {
-                // No bet -> Normal 50/50 flip
-                result = Math.random() < 0.5 ? 'red' : 'blue';
-            }
-            
-            // Generate 3D Spin Rotations
-            const spinCountX = Math.floor(Math.random() * 5) + 5; 
-            const spinCountY = Math.floor(Math.random() * 5) + 5; 
-            
-            rotationX += (spinCountX * 360);
-            let finalY = rotationY + (spinCountY * 360);
-            
-            if (result === 'blue') { finalY += 180; } 
-            else if (finalY % 360 !== 0) { finalY += 180; }
-            rotationY = finalY;
-
-            // ANIMATION STEP 1: JUMP UP
-            coinJump.style.transform = `translateZ(300px) scale(1.2)`; 
-            coinSpin.style.transform = `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
-
-            // ANIMATION STEP 2: FALL DOWN
-            setTimeout(() => {
-                coinJump.style.transform = `translateZ(10px) scale(1)`; 
-            }, 1500);
-
-            // ANIMATION STEP 3: LAND
-            setTimeout(() => {
-                playSfx(dropSound);
-                checkWin(result);
-            }, 3000); 
-        }
-
-        function checkWin(result) {
-            if (currentBet !== null) {
-                if (currentBet === result) {
-                    let winAmount = betAmount * 1.9; // 1.9x standard payout
-                    db.collection("users").doc(currentUser.uid).update({ balance: balance + winAmount });
-                    
-                    statusMsg.innerText = `${result.toUpperCase()} WON! +৳${winAmount.toFixed(2)}`;
-                    statusMsg.style.color = "#96c93d";
-                    playSfx(winSound);
-                    
-                    myGameHistory.unshift({ betAmt: betAmount, color: currentBet, result: result, isWin: true, winAmt: winAmount });
-                } else {
-                    statusMsg.innerText = `${result.toUpperCase()} WON! You lost ৳${betAmount}`;
-                    statusMsg.style.color = "#ff3333";
-                    db.collection("transactions").add({ uid: currentUser.uid, amount: -betAmount, type: 'loss', description: `Coin Flip Loss`});
-                    
-                    myGameHistory.unshift({ betAmt: betAmount, color: currentBet, result: result, isWin: false, winAmt: 0 });
-                }
-                if(myGameHistory.length > 50) myGameHistory.pop();
-            } else {
-                statusMsg.innerText = `Landed on ${result.toUpperCase()}`;
-                statusMsg.style.color = "#fff";
-            }
-
-            setTimeout(() => { resetRound(); }, 4000);
-        }
-
-        function resetRound() {
-            timeLeft = 10;
+        if (data.state === 'wait') {
             isFlipping = false;
-            currentBet = null;
+            btnRed.disabled = currentBet !== null && currentBet !== 'red';
+            btnBlue.disabled = currentBet !== null && currentBet !== 'blue';
+            if(!currentBet) { statusMsg.innerText = "Place your bets (Max ৳10000)"; statusMsg.style.color = "#ccc"; }
             
-            btnRed.disabled = false;
-            btnBlue.disabled = false;
-            btnRed.innerText = "RED";
-            btnBlue.innerText = "BLUE";
-            
-            statusMsg.innerText = "Place your bets (Max ৳10000)";
-            statusMsg.style.color = "#ccc";
-            timerEl.innerText = timeLeft;
+            // Sync Live Timer
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                let timeLeft = Math.max(0, Math.ceil((data.endTime - Date.now()) / 1000));
+                timerEl.innerText = timeLeft;
+                if (timeLeft <= 3 && timeLeft > 0) { timerEl.classList.add("timer-alert"); playSfx(tickSound); } 
+                else { timerEl.classList.remove("timer-alert"); }
+            }, 1000);
+        } 
+        else if (data.state === 'flip') {
+            if (timerInterval) clearInterval(timerInterval);
+            timerEl.innerText = "0"; timerEl.classList.remove("timer-alert");
+            startFlipAnimation(data.result);
         }
-    </script>
+    });
+
+    function startFlipAnimation(result) {
+        isFlipping = true; btnRed.disabled = true; btnBlue.disabled = true;
+        statusMsg.innerText = "Coin is spinning..."; statusMsg.style.color = "#ffcc00";
+
+        const spinCountX = Math.floor(Math.random() * 5) + 5; 
+        const spinCountY = Math.floor(Math.random() * 5) + 5; 
+        
+        rotationX += (spinCountX * 360);
+        let finalY = rotationY + (spinCountY * 360);
+        
+        if (result === 'blue') { finalY += 180; } 
+        else if (finalY % 360 !== 0) { finalY += 180; }
+        rotationY = finalY;
+
+        coinJump.style.transform = `translateZ(300px) scale(1.2)`; 
+        coinSpin.style.transform = `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+
+        setTimeout(() => { coinJump.style.transform = `translateZ(10px) scale(1)`; }, 1500);
+
+        setTimeout(() => {
+            playSfx(dropSound);
+            checkWin(result);
+        }, 3000); 
+    }
+
+    function checkWin(result) {
+        if (currentBet !== null) {
+            if (currentBet === result) {
+                let winAmount = betAmount * 1.9;
+                db.collection("users").doc(currentUser.uid).update({ balance: balance + winAmount });
+                statusMsg.innerText = `${result.toUpperCase()} WON! +৳${winAmount.toFixed(2)}`; statusMsg.style.color = "#96c93d"; playSfx(winSound);
+            } else {
+                statusMsg.innerText = `${result.toUpperCase()} WON! You lost ৳${betAmount}`; statusMsg.style.color = "#ff3333";
+            }
+        } else {
+            statusMsg.innerText = `Landed on ${result.toUpperCase()}`; statusMsg.style.color = "#fff";
+        }
+
+        // Reset for next round
+        setTimeout(() => {
+            currentBet = null;
+            btnRed.innerText = "RED"; btnBlue.innerText = "BLUE";
+        }, 3000);
+    }
+</script>
 </body>
 </html>
