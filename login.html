@@ -175,20 +175,22 @@
         let currentUser = null;
 
         auth.onAuthStateChanged(user => {
-            if (!user) {
-                window.location.replace('login.html');
-            } else {
-                currentUser = user;
-                document.getElementById('app-section').style.display = 'block';
-                
-                db.collection("users").doc(user.uid).onSnapshot(d => { 
-                    if(d.exists){ 
-                        document.getElementById('user-balance').innerText = (parseFloat(d.data().balance)||0).toFixed(2); 
-                    } 
-                });
+    if (user) {
+        currentUser = user;
+
+        document.getElementById('user-balance').innerText = 'Loading...';
+
+        db.collection("users").doc(user.uid).onSnapshot(d => {
+            if (d.exists) {
+                document.getElementById('user-balance').innerText =
+                    (parseFloat(d.data().balance) || 0).toFixed(2);
             }
         });
+    }
 
+    document.getElementById('app-section').style.display = 'block';
+});
+        
         const showPopup = (m, t='error') => { const c = document.getElementById('toast-container'), e = document.createElement('div'); e.className = `glass border-l-4 ${t==='error'?'border-red-500 text-red-400':t==='success'?'border-green-500 text-green-400':'border-blue-500 text-blue-400'} p-3 rounded-xl shadow-2xl toast-enter font-bold text-sm flex items-center bg-slate-900 pointer-events-auto mt-2`; e.innerHTML = `<i class="fa-solid ${t==='error'?'fa-circle-xmark':'fa-check-circle'} text-lg mr-3"></i> <span>${m}</span>`; c.prepend(e); setTimeout(() => { e.style.opacity='0'; e.style.transform='translateY(-20px)'; setTimeout(()=>e.remove(),300); }, 3000); };
 
         function toggleMenu() {
