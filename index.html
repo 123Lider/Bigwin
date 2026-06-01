@@ -174,25 +174,22 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         let currentUser = null;
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
 
-        // 🟢 AUTH STATE CHECK (FAST REDIRECT)
-        auth.onAuthStateChanged(user => {
-            if (!user) {
-                // If not logged in, go directly to login page
-                window.location.replace('login.html');
-            } else {
-                currentUser = user;
-                // Show the app UI if logged in
-                document.getElementById('app-section').style.display = 'block';
-                
-                // Load Realtime Balance
-                db.collection("users").doc(user.uid).onSnapshot(d => { 
-                    if(d.exists){ 
-                        document.getElementById('user-balance').innerText = (parseFloat(d.data().balance)||0).toFixed(2); 
-                    } 
-                });
+        document.getElementById('user-balance').innerText = 'Loading...';
+
+        db.collection("users").doc(user.uid).onSnapshot(d => {
+            if (d.exists) {
+                document.getElementById('user-balance').innerText =
+                    (parseFloat(d.data().balance) || 0).toFixed(2);
             }
         });
+    }
+
+    document.getElementById('app-section').style.display = 'block';
+});
 
         // ==========================================
         // UI & NAVIGATION FUNCTIONS
