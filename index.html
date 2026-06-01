@@ -25,7 +25,7 @@
         ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
         
         /* App layout constraints */
-        .app-container { max-width: 600px; margin: 0 auto; background: #0f172a; min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); display: none; } /* Initially hidden to prevent UI flash before auth check */
+        .app-container { max-width: 600px; margin: 0 auto; background: #0f172a; min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
 
         .betting-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .bet-card { position: relative; border-radius: 14px; overflow: hidden; cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.4); transition: 0.2s; }
@@ -34,34 +34,71 @@
         .game-title { position: absolute; bottom: 0; width: 100%; padding: 6px; text-align: center; font-weight: bold; font-size: 12px; color: white; background: rgba(0,0,0,0.6); }
     </style>
 </head>
-    <button onclick="window.location.href='login.html'"
-class="bg-blue-600 px-3 py-2 rounded-lg text-sm font-bold">
-    Login
-</button>
 <body class="bg-black">
 
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none"></div>
+    <div id="toast-container" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[200] flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none"></div>
+
+    <!-- Login Modal (Popup) -->
+    <div id="login-modal" class="fixed inset-0 bg-black/80 z-[150] hidden-section flex justify-center items-center backdrop-blur-sm transition-opacity duration-300">
+        <div class="glass p-6 rounded-2xl w-[90%] max-w-sm relative shadow-2xl border border-slate-700">
+            <button onclick="closeLoginModal()" class="absolute top-3 right-4 text-slate-400 hover:text-red-400 transition text-xl"><i class="fa-solid fa-xmark"></i></button>
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-extrabold text-blue-500"><i class="fa-solid fa-bolt"></i>BET<span class="text-white"> ZONE</span></h1>
+                <h2 id="auth-title" class="text-lg font-bold text-slate-300 mt-2">Account Login</h2>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block">Email</label>
+                    <input type="email" id="auth-email" placeholder="Enter your email" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none text-white focus:border-blue-500 transition">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block">Password</label>
+                    <input type="password" id="auth-password" placeholder="Enter password" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 outline-none text-white focus:border-blue-500 transition">
+                </div>
+                
+                <button onclick="processAuth()" id="auth-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-all">Login</button>
+            </div>
+            
+            <p class="text-center text-sm text-slate-400 mt-5">
+                <span id="auth-switch-text">Don't have an account?</span> 
+                <button onclick="toggleAuthMode()" id="auth-switch-btn" class="text-blue-400 font-bold hover:underline">Register</button>
+            </p>
+        </div>
+    </div>
     
     <!-- Main App Layout -->
     <div id="app-section" class="app-container pb-20">
         
         <!-- Top Header -->
         <header class="glass sticky top-0 z-40 px-4 py-3 flex justify-between items-center border-b border-slate-800">
-            <h1 class="text-2xl font-extrabold text-blue-500"><i class="fa-solid fa-bolt"></i>BET<span class="text-white"> ZONE</span></h1>
+            <h1 class="text-2xl font-extrabold text-blue-500 cursor-pointer" onclick="showPage('dashboard')"><i class="fa-solid fa-bolt"></i>BET<span class="text-white"> ZONE</span></h1>
             
+            <!-- Dynamic Header Right Side -->
             <div class="flex items-center gap-4">
-                <div class="bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-2">
-                    <i class="fa-solid fa-wallet text-green-400"></i>
-                    <span class="font-bold text-white text-sm">৳ <span id="user-balance">0.00</span></span>
+                
+                <!-- If User is Logged Out -->
+                <div id="header-logged-out">
+                    <button onclick="openLoginModal()" class="bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded-lg text-sm font-bold shadow-[0_0_10px_rgba(37,99,235,0.5)] transition text-white">
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i> Login
+                    </button>
                 </div>
-                <button onclick="toggleMenu()" class="text-2xl text-slate-300 hover:text-white transition">
-                    <i class="fa-solid fa-bars-staggered"></i>
-                </button>
+
+                <!-- If User is Logged In -->
+                <div id="header-logged-in" class="hidden-section items-center gap-4">
+                    <div class="bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-wallet text-green-400"></i>
+                        <span class="font-bold text-white text-sm">৳ <span id="user-balance">0.00</span></span>
+                    </div>
+                    <button onclick="toggleMenu()" class="text-2xl text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-bars-staggered"></i>
+                    </button>
+                </div>
             </div>
         </header>
 
-        <!-- Sidebar / Hamburger Menu Overlay -->
+        <!-- Sidebar / Hamburger Menu Overlay (Protected) -->
         <div id="side-menu-overlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/60 z-40 hidden-section backdrop-blur-sm"></div>
         <div id="side-menu" class="fixed top-0 right-0 h-full w-64 bg-slate-900 border-l border-slate-800 transform translate-x-full transition-transform duration-300 z-50 shadow-2xl flex flex-col">
             <div class="p-4 border-b border-slate-800 flex justify-between items-center">
@@ -69,10 +106,10 @@ class="bg-blue-600 px-3 py-2 rounded-lg text-sm font-bold">
                 <button onclick="toggleMenu()" class="text-2xl text-slate-400 hover:text-red-400"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3 flex-1 overflow-y-auto">
-                <button onclick="window.location.href='wallet.html?tab=deposit'" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-arrow-down text-green-400 w-6"></i> Deposit</button>
-                <button onclick="window.location.href='wallet.html?tab=withdraw'" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-arrow-up text-red-400 w-6"></i> Withdraw</button>
-                <button onclick="showPage('password'); toggleMenu()" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-key text-yellow-400 w-6"></i> Change Password</button>
-                <button onclick="showPage('history'); switchHistoryTab('deposit'); toggleMenu()" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-clock-rotate-left text-blue-400 w-6"></i> History</button>
+                <button onclick="openProtectedUrl('wallet.html?tab=deposit')" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-arrow-down text-green-400 w-6"></i> Deposit</button>
+                <button onclick="openProtectedUrl('wallet.html?tab=withdraw')" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-arrow-up text-red-400 w-6"></i> Withdraw</button>
+                <button onclick="showProtectedPage('password'); toggleMenu()" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-key text-yellow-400 w-6"></i> Change Password</button>
+                <button onclick="showProtectedPage('history'); switchHistoryTab('deposit'); toggleMenu()" class="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition"><i class="fa-solid fa-clock-rotate-left text-blue-400 w-6"></i> History</button>
             </div>
             <div class="p-4 border-t border-slate-800">
                 <button onclick="logout()" class="w-full bg-red-500/20 text-red-400 p-3 rounded-xl font-bold border border-red-500/50 hover:bg-red-500/30 transition"><i class="fa-solid fa-power-off"></i> Logout</button>
@@ -82,33 +119,32 @@ class="bg-blue-600 px-3 py-2 rounded-lg text-sm font-bold">
         <!-- Main Content -->
         <main class="p-4">
             
-            <!-- Dashboard / Games -->
+            <!-- Dashboard / Games (Always Visible) -->
             <div id="page-dashboard" class="page-section">
                 <h2 class="text-xl font-bold mb-4 text-slate-200">Live Games</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div class="bet-card" onclick="window.location.replace('crazy time.html')">
+                    <div class="bet-card" onclick="openProtectedUrl('crazy time.html')">
                         <img src="https://i.ibb.co.com/Kj8RPMbz/crazy-time.png" class="game-img">
                         <div class="game-title">Crazy Time</div>
                     </div>
-                    <div class="bet-card" onclick="window.location.replace('toss.html')">
+                    <div class="bet-card" onclick="openProtectedUrl('toss.html')">
                         <img src="https://i.ibb.co.com/N2vZn8tZ/file-000000007d287208a88527bb2fc5c619.png" class="game-img">
                         <div class="game-title">Toss Game</div>
                     </div>
-                    <div class="bet-card" onclick="window.location.replace('dice.html')">
+                    <div class="bet-card" onclick="openProtectedUrl('dice.html')">
                          <img src="https://i.ibb.co.com/Mxf4j6nk/dice-roll.jpg" class="game-img">
                          <div class="game-title">Dice Roll</div>
                     </div>
-                    <div class="bet-card" onclick="window.location.replace('aviator.html')">
+                    <div class="bet-card" onclick="openProtectedUrl('aviator.html')">
                         <img src="https://i.ibb.co/Y4CXNmvN/Rn-Sg-CFs-N-400x400.jpg" class="game-img">
                         <div class="game-title">Aviator</div>
                     </div>
     
-                    <div class="bet-card" onclick="window.location.replace('spin wheel.html')">
+                    <div class="bet-card" onclick="openProtectedUrl('spin wheel.html')">
                         <img src="https://i.ibb.co.com/7tfZBLqK/istockphoto-2130791181-612x612-1.jpg" class="game-img">
                         <div class="game-title">Spin Wheel</div>
                     </div>
-                    <!-- Run Win Game Card -->
-                    <div class="bet-card" onclick="window.location.replace('run win.html')">
+                    <div class="bet-card" onclick="openProtectedUrl('run win.html')">
                         <img src="https://i.ibb.co/1t591bTF/unnamed-1.png" class="game-img">
                         <div class="game-title">Run Win</div>
                     </div>
@@ -161,71 +197,19 @@ class="bg-blue-600 px-3 py-2 rounded-lg text-sm font-bold">
                 <i class="fa-solid fa-house text-xl mb-1"></i>
                 <span class="text-[10px]">Home</span>
             </button>
-            <button onclick="window.location.href='trading.html'" class="flex flex-col items-center text-slate-400 hover:text-green-400 transition">
+            <button onclick="openProtectedUrl('trading.html')" class="flex flex-col items-center text-slate-400 hover:text-green-400 transition">
                 <i class="fa-solid fa-chart-candlestick text-xl mb-1"></i>
                 <span class="text-[10px]">Trade</span>
             </button>
-            <button onclick="window.location.href='wallet.html'" class="flex flex-col items-center text-slate-400 hover:text-blue-400 transition">
+            <button onclick="openProtectedUrl('wallet.html')" class="flex flex-col items-center text-slate-400 hover:text-blue-400 transition">
                 <i class="fa-solid fa-wallet text-xl mb-1"></i>
                 <span class="text-[10px]">Wallet</span>
             </button>
         </nav>
     </div>
-    <!-- Firebase and Auth Logic Direct Implementation -->
-    <script>
-        const firebaseConfig = { apiKey: "AIzaSyB2Gv7FXkDP5AJEm2MrZBEin6rN8YZwnK8", authDomain: "betbd-be722.firebaseapp.com", projectId: "betbd-be722", storageBucket: "betbd-be722.firebasestorage.app", messagingSenderId: "192673970713", appId: "1:192673970713:web:778a960157b5ff48638888", measurementId: "G-VE56XQM64X" };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        let currentUser = null;
-auth.onAuthStateChanged(user => {
-    if (user) {
-        currentUser = user;
 
-        document.getElementById('user-balance').innerText = 'Loading...';
+    <!-- MERGED JAVASCRIPT LOGIC -->
 
-        db.collection("users").doc(user.uid).onSnapshot(d => {
-            if (d.exists) {
-                document.getElementById('user-balance').innerText =
-                    (parseFloat(d.data().balance) || 0).toFixed(2);
-            }
-        });
-    }
-
-    document.getElementById('app-section').style.display = 'block';
-});
-
-        // ==========================================
-        // UI & NAVIGATION FUNCTIONS
-        // ==========================================
-        const showPopup = (m, t='error') => { const c = document.getElementById('toast-container'), e = document.createElement('div'); e.className = `glass border-l-4 ${t==='error'?'border-red-500 text-red-400':t==='success'?'border-green-500 text-green-400':'border-blue-500 text-blue-400'} p-3 rounded-xl shadow-2xl toast-enter font-bold text-sm flex items-center bg-slate-900 pointer-events-auto mt-2`; e.innerHTML = `<i class="fa-solid ${t==='error'?'fa-circle-xmark':'fa-check-circle'} text-lg mr-3"></i> <span>${m}</span>`; c.prepend(e); setTimeout(() => { e.style.opacity='0'; e.style.transform='translateY(-20px)'; setTimeout(()=>e.remove(),300); }, 3000); };
-
-        function toggleMenu() {
-            const menu = document.getElementById('side-menu');
-            const overlay = document.getElementById('side-menu-overlay');
-            if (menu.classList.contains('translate-x-full')) {
-                menu.classList.remove('translate-x-full'); overlay.classList.remove('hidden-section');
-            } else {
-                menu.classList.add('translate-x-full'); overlay.classList.add('hidden-section');
-            }
-        }
-
-function showPage(pageId) {
-            document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden-section'));
-            document.getElementById(`page-${pageId}`).classList.remove('hidden-section');
-            window.scrollTo(0, 0);
-        }
-
-        // LOGOUT FUNCTION
-        function logout() {
-            auth.signOut().then(() => {
-                window.location.replace('login.html');
-            });
-        }
-
-        // External Scripts
-        // (If you have other game logic in app.js, it will load here)
-    </script>
-    <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
