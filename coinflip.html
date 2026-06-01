@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Flip</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0; padding: 0; background: radial-gradient(circle at center, #110c1c 0%, #000000 100%);
+            color: white; font-family: 'Montserrat', sans-serif; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
+        }
+
+        /* Top Header */
+        .header {
+            position: absolute; top: 15px; width: 100%; max-width: 500px;
+            display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; z-index: 200;
+        }
+        .info-box {
+            background: rgba(0, 0, 0, 0.8); border: 2px solid #d4af37; padding: 5px 15px;
+            border-radius: 8px; text-align: center; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+        }
+        .info-box span { color: #fce45e; font-size: 15px; font-weight: 900; display: block; }
+
+        /* The Main Static Container (Zoom Removed) */
+        .game-camera {
+            position: relative; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* 1. Slot Machine (Top) - Fixed Size */
+        .slot-machine {
+            width: 140px; height: 170px; 
+            background: #0a0a0a; border: 5px solid #d4af37; border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(0,0,0,0.9);
+            display: flex; flex-direction: column; overflow: hidden;
+            position: relative; margin-bottom: 30px;
+        }
+        .slot-machine::after {
+            content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(to right, #d4af37, #fff, #d4af37); box-shadow: 0 0 15px #000;
+        }
+        .slot-section {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; border-bottom: 2px solid rgba(0,0,0,0.5);
+        }
+        .slot-section.red { background: radial-gradient(circle, #800000, #220000); }
+        .slot-section.blue { background: radial-gradient(circle, #000080, #000022); }
+
+        .slot-multi {
+            font-size: 32px; font-weight: 900; font-family: 'Alfa Slab One', cursive;
+            text-shadow: 1px 1px 4px #000; transition: transform 0.1s;
+        }
+        .slot-section.red .slot-multi { color: #ff3333; text-shadow: 0 0 10px #ff0000, 1px 1px 4px #000; }
+        .slot-section.blue .slot-multi { color: #3388ff; text-shadow: 0 0 10px #0000ff, 1px 1px 4px #000; }
+        .slot-label { font-size: 10px; color: #fff; opacity: 0.8; letter-spacing: 2px; font-weight: bold; margin-top: 2px; }
+
+        /* 2. The Premium 3D Board (Bottom) */
+        .bowl-area {
+            position: relative; width: 320px; height: 180px;
+            display: flex; justify-content: center; align-items: center;
+            perspective: 1000px;
+        }
+        
+        /* 3D Podium Outer Ring */
+        .bowl-outer {
+            position: absolute; top: 50%; left: 50%;
+            width: 300px; height: 300px;
+            transform: translate(-50%, -50%) rotateX(70deg); 
+            background: radial-gradient(circle, #1a0a0a 0%, #000 80%);
+            border-radius: 50%; border: 10px solid #d4af37;
+            box-shadow: 0 40px 50px rgba(0,0,0,0.9), inset 0 10px 30px rgba(0,0,0,0.8);
+        }
+        
+        /* Inner Cushion */
+        .bowl-inner {
+            position: absolute; top: 50%; left: 50%;
+            width: 220px; height: 220px;
+            transform: translate(-50%, -50%) rotateX(70deg) translateZ(-5px);
+            background: #050505; border-radius: 50%;
+            box-shadow: inset 0 0 40px rgba(255,255,255,0.05);
+        }
+
+        /* Dynamic Shadow */
+        .coin-shadow {
+            position: absolute; top: 50%; left: 50%;
+            width: 90px; height: 90px;
+            margin-top: -45px; margin-left: -45px;
+            background: rgba(0,0,0,0.9); border-radius: 50%; filter: blur(6px);
+            transform: rotateX(70deg);
+            transition: all 3s cubic-bezier(0.2, 0.9, 0.6, 1);
+        }
+
+        /* Coin Wrapper */
+        .jump-wrapper {
+            position: absolute; top: 50%; left: 50%;
+            width: 90px; height: 90px;
+            margin-top: -45px; margin-left: -45px;
+            z-index: 10;
+        }
+        
+        /* Realistic Thick Coin */
+        .coin-3d {
+            width: 100%; height: 100%; position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(70deg); 
+            transition: transform 3s cubic-bezier(0.2, 0.8, 0.3, 1); 
+        }
+
+        .face {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 22px; font-weight: 900; color: #fff; text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
+            box-sizing: border-box; backface-visibility: hidden;
+            border: 5px solid #f0f0f0; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        
+        .face-red { background: radial-gradient(circle at 40% 40%, #ff4d4d, #990000); transform: translateZ(6px); }
+        .face-blue { background: radial-gradient(circle at 40% 40%, #4d94ff, #000099); transform: rotateX(180deg) translateZ(6px); }
+
+        /* Thickness layers */
+        .edge {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            background: linear-gradient(to bottom, #ffffff, #aaaaaa, #ffffff);
+            box-sizing: border-box; border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        /* Jump Animation */
+        @keyframes jumpHigh {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-300px) scale(1.6); } 
+            85% { transform: translateY(-15px) scale(1.05); } 
+            100% { transform: translateY(0) scale(1); }
+        }
+        @keyframes shadowScale {
+            0% { transform: rotateX(70deg) scale(1); opacity: 0.9; }
+            50% { transform: rotateX(70deg) scale(0.3); opacity: 0.2; }
+            100% { transform: rotateX(70deg) scale(1); opacity: 0.9; }
+        }
+
+        .jumping { animation: jumpHigh 3s cubic-bezier(0.25, 0.9, 0.6, 1) forwards; }
+        .shadow-animate { animation: shadowScale 3s cubic-bezier(0.25, 0.9, 0.6, 1) forwards; }
+
+        /* Result Overlay */
+        .overlay-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-size: 38px; font-weight: 900; color: #fff; text-shadow: 0 5px 15px #000;
+            z-index: 500; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center; width: 100%; background: rgba(0,0,0,0.95); padding: 25px 0;
+            border-top: 5px solid #d4af37; border-bottom: 5px solid #d4af37;
+        }
+        .overlay-msg.show { transform: translate(-50%, -50%) scale(1); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="info-box">Your Bet <span id="bet-amount">৳0</span></div>
+        <div class="info-box">Balance <span id="balance">৳0</span></div>
+    </div>
+
+    <!-- গেম ক্যামেরা (No Zoom) -->
+    <div class="game-camera" id="game-camera">
+        
+        <!-- Slot Machine -->
+        <div class="slot-machine">
+            <div class="slot-section red">
+                <div class="slot-multi" id="red-multi">10x</div>
+                <div class="slot-label">RED</div>
+            </div>
+            <div class="slot-section blue">
+                <div class="slot-multi" id="blue-multi">10x</div>
+                <div class="slot-label">BLUE</div>
+            </div>
+        </div>
+
+        <!-- 3D Podium & Coin -->
+        <div class="bowl-area">
+            <div class="bowl-outer"></div>
+            <div class="bowl-inner"></div>
+            <div class="coin-shadow" id="coin-shadow"></div>
+            
+            <div class="jump-wrapper" id="jump-wrapper">
+                <div class="coin-3d" id="coin">
+                    <!-- থিকনেস লেয়ার -->
+                    <div class="edge" style="transform: translateZ(5px)"></div>
+                    <div class="edge" style="transform: translateZ(4px)"></div>
+                    <div class="edge" style="transform: translateZ(2px)"></div>
+                    <div class="edge" style="transform: translateZ(0px)"></div>
+                    <div class="edge" style="transform: translateZ(-2px)"></div>
+                    <div class="edge" style="transform: translateZ(-4px)"></div>
+                    <div class="edge" style="transform: translateZ(-5px)"></div>
+                    
+                    <div class="face face-red">RED</div>
+                    <div class="face face-blue">BLUE</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="overlay-msg" id="overlay-msg"></div>
+
+<script>
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    // ==========================================
+    // DATA CONNECTION & MULTIPLIER LOGIC
+    // ==========================================
+    let ADMIN_TARGET_COLOR = Math.random() > 0.5 ? 'Red' : 'Blue'; 
+    
+    let betAmount = parseInt(localStorage.getItem('crazy_cf_bet')) || 0;
+    let balance = parseFloat(localStorage.getItem('crazy_balance')) || 0;
+    
+    // মেইন গেম থেকে Top Slot Multiplier (Spin X) নিয়ে আসা
+    let topSlotMulti = parseInt(localStorage.getItem('crazy_top_slot_multi')) || 1;
+
+    document.getElementById('bet-amount').innerText = `৳${betAmount}`;
+    document.getElementById('balance').innerText = `৳${balance}`;
+
+    let redFinalMulti = 0;
+    let blueFinalMulti = 0;
+
+    // ==========================================
+    // REALISTIC MULTIPLIER LOGIC (Top Slot Synced)
+    // ==========================================
+    function getRealisticMultiplier() {
+        let chance = Math.random();
+        let base = 2;
+        if (chance < 0.60) base = Math.floor(Math.random() * 8) + 2;     // 2x - 9x
+        else if (chance < 0.85) base = Math.floor(Math.random() * 15) + 10;   // 10x - 24x
+        else if (chance < 0.98) base = Math.floor(Math.random() * 25) + 25;   // 25x - 49x
+        else base = Math.floor(Math.random() * 51) + 50;                      // 50x - 100x
+        
+        return base * topSlotMulti; // Top slot এর গুণফল যোগ করা হলো
+    }
+
+    // ==========================================
+    // NEW REALISTIC AUDIO EFFECTS
+    // ==========================================
+    function playTick() {
+        if (audioCtx.state === 'suspended') return;
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = 'square'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.02);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.02);
+    }
+
+    function playFlipStartSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const freqs = [1500, 2400, 3100]; 
+        freqs.forEach(freq => {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime); 
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.2);
+        });
+    }
+
+    function playLandingSound() {
+        if (audioCtx.state === 'suspended') return;
+        
+        const oscLow = audioCtx.createOscillator(); const gainLow = audioCtx.createGain();
+        oscLow.connect(gainLow); gainLow.connect(audioCtx.destination);
+        oscLow.type = 'sine'; oscLow.frequency.setValueAtTime(120, audioCtx.currentTime);
+        oscLow.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.2);
+        gainLow.gain.setValueAtTime(0.6, audioCtx.currentTime);
+        gainLow.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        oscLow.start(); oscLow.stop(audioCtx.currentTime + 0.2);
+
+        const freqs = [3500, 4800, 6200];
+        freqs.forEach(freq => {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+        });
+    }
+
+    // ==========================================
+    // GAME FLOW
+    // ==========================================
+    function startSlotSpin() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let redBox = document.getElementById('red-multi');
+        let blueBox = document.getElementById('blue-multi');
+        let ticks = 0;
+        
+        let spinInterval = setInterval(() => {
+            redBox.innerText = (Math.floor(Math.random() * 50) + 2) * topSlotMulti + "x";
+            blueBox.innerText = (Math.floor(Math.random() * 50) + 2) * topSlotMulti + "x";
+            playTick();
+            ticks++;
+            if (ticks > 30) {
+                clearInterval(spinInterval);
+                stopSlots();
+            }
+        }, 100);
+    }
+
+    function stopSlots() {
+        redFinalMulti = getRealisticMultiplier();
+        blueFinalMulti = getRealisticMultiplier();
+
+        document.getElementById('red-multi').innerText = redFinalMulti + "x";
+        document.getElementById('blue-multi').innerText = blueFinalMulti + "x";
+
+        setTimeout(flipCoin, 800);
+    }
+
+    function flipCoin() {
+        playFlipStartSound(); 
+        
+        const jumpWrapper = document.getElementById('jump-wrapper');
+        const coin = document.getElementById('coin');
+        const shadow = document.getElementById('coin-shadow');
+
+        jumpWrapper.classList.add('jumping');
+        shadow.classList.add('shadow-animate');
+
+        let spins = 14; 
+        let finalRotation = spins * 360; 
+
+        if (ADMIN_TARGET_COLOR === 'Blue') {
+            finalRotation += 180; 
+        }
+
+        coin.style.transform = `rotateX(${finalRotation + 70}deg) rotateZ(0deg)`;
+
+        setTimeout(() => {
+            playLandingSound(); 
+            showResult();
+        }, 3000);
+    }
+
+    // ==========================================
+    // RESULT & DATA RETURN
+    // ==========================================
+    function showResult() {
+        const overlayMsg = document.getElementById('overlay-msg');
+        let winMulti = ADMIN_TARGET_COLOR === 'Red' ? redFinalMulti : blueFinalMulti;
+        let winAmount = betAmount * winMulti;
+        let colorHex = ADMIN_TARGET_COLOR === 'Red' ? '#ff4d4d' : '#4d94ff';
+
+        if (betAmount > 0) {
+            balance += winAmount;
+            localStorage.setItem('crazy_balance', balance);
+            
+            // মেইন গেমে টাকা যোগ করার জন্য ডেটা পাঠানো
+            localStorage.setItem('pending_bonus_win', winAmount);
+            
+            overlayMsg.innerHTML = `<span style="color:${colorHex};">${ADMIN_TARGET_COLOR.toUpperCase()} WINS!</span><br>YOU WON ৳${winAmount}`;
+        } else {
+            overlayMsg.innerHTML = `<span style="color:${colorHex};">${ADMIN_TARGET_COLOR.toUpperCase()} WINS!</span><br>${winMulti}X RESULT!`;
+        }
+
+        overlayMsg.classList.add('show');
+
+        // মেইন গেমে (CrazyTime.html) ফিরে যাওয়া
+        setTimeout(() => {
+            window.location.replace("crazy time.html");
+        }, 5000);
+    }
+
+    setTimeout(startSlotSpin, 1000);
+
+</script>
+</body>
+</html>

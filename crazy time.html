@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Crazy Time</title>
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Great+Vibes&family=Rye&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+        body {
+            background: linear-gradient(to bottom, #4a004a 0%, #1a001a 40%, #cca31c 40%, #cca31c 100%);
+            color: white; font-family: 'Montserrat', sans-serif;
+            overflow: hidden; display: flex; flex-direction: column; height: 100vh;
+        }
+
+        /* --- Top Navigation Bar --- */
+        .top-nav {
+            position: absolute; top: 10px; left: 10px; right: 10px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            z-index: 200;
+        }
+
+        .back-btn {
+            background: rgba(0, 0, 0, 0.8); border: 2px solid #fce45e; color: #fce45e; font-size: 20px; font-weight: bold;
+            height: 38px; width: 45px; display: flex; justify-content: center; align-items: center;
+            border-radius: 8px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: transform 0.2s;
+        }
+        .back-btn:active { transform: scale(0.9); }
+
+        .status-board {
+            background: rgba(0, 0, 0, 0.8); border: 2px solid #fce45e; padding: 5px 20px;
+            border-radius: 20px; font-size: 16px; font-weight: 900;
+            text-transform: uppercase; box-shadow: 0 0 15px rgba(0,0,0,0.8); margin-top: 5px;
+        }
+
+        .right-controls { display: flex; gap: 8px; align-items: flex-start; }
+
+        .top-balance-box {
+            background: rgba(0, 0, 0, 0.8); padding: 0 15px; height: 38px;
+            border-radius: 8px; border: 2px solid #fce45e; font-size: 14px; font-weight: bold; color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+        }
+        .top-balance-box span { color: #fce45e; font-weight: 900; margin-left: 5px; font-size: 15px;}
+
+        .menu-container { position: relative; }
+        .hamburger-menu {
+            background: rgba(0, 0, 0, 0.8); border: 2px solid #fce45e; height: 38px; width: 45px; border-radius: 8px; 
+            font-size: 20px; color: #fce45e; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .dropdown-content {
+            display: none; position: absolute; right: 0; top: 45px;
+            background-color: rgba(10, 0, 15, 0.95); min-width: 150px; 
+            box-shadow: 0 8px 16px rgba(0,0,0,0.8); border-radius: 8px; border: 1px solid #fce45e; overflow: hidden;
+        }
+        .dropdown-content.show { display: block; }
+        .dropdown-content div {
+            color: white; padding: 12px 15px; text-decoration: none;
+            display: block; font-size: 12px; font-weight: bold; border-bottom: 1px solid #333; cursor: pointer;
+        }
+
+        /* --- Top Section: Wheel & Top Slot --- */
+        .top-section {
+            height: 40vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-end;
+            position: relative; z-index: 1; padding-bottom: 10px;
+        }
+
+        .wheel-row {
+            display: flex; justify-content: center; align-items: center; gap: 10px; width: 100%; max-width: 400px;
+        }
+
+        /* Top Slot CSS (Spin X) */
+        .top-slot {
+            width: 70px; height: 90px; background: linear-gradient(to bottom, #ffffff, #e0e0e0);
+            border: 4px solid #d4af37; border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center; overflow: hidden;
+            position: relative; z-index: 50; transition: transform 0.2s;
+        }
+        .top-slot::after { 
+            content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 3px;
+            background: rgba(222, 49, 49, 0.8); box-shadow: 0 0 8px red; z-index: 5;
+        }
+        .slot-text {
+            font-size: 26px; font-weight: 900; color: #d4af37; text-align: center;
+            font-family: 'Alfa Slab One', cursive; text-shadow: 2px 2px 2px #000;
+        }
+        .slot-text.bonus-text-style { color: #de3131; font-size: 14px; line-height: 1.1; text-shadow: 1px 1px 2px #000;}
+        .top-slot.highlight { transform: scale(1.1); box-shadow: 0 0 20px #fce45e; border-color: #fce45e; }
+
+        .wheel-container {
+            position: relative; width: 240px; height: 240px;
+            transition: transform 1s cubic-bezier(0.25, 1, 0.5, 1);
+            transform-origin: top center; z-index: 100;
+        }
+
+        .flapper {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            z-index: 110; width: 25px; height: 35px;
+            background: linear-gradient(to bottom, #fce45e, #c49a1d);
+            clip-path: polygon(50% 100%, 0 0, 100% 0); filter: drop-shadow(0 5px 5px rgba(0,0,0,0.8));
+        }
+        .flapper::after {
+            content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 10px; height: 15px; background: #de3131; clip-path: polygon(50% 100%, 0 0, 100% 0);
+        }
+        canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+
+        /* --- Middle: History Bar --- */
+        .history-bar {
+            width: 100%; height: 35px; padding: 0 10px;
+            display: flex; justify-content: flex-start; align-items: center; gap: 4px;
+            z-index: 5; background: linear-gradient(to bottom, transparent, rgba(204, 163, 28, 0.8)); overflow: hidden;
+        }
+        .hist-item {
+            width: 22px; height: 22px; border-radius: 4px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 10px; font-weight: 900; color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0;
+            animation: popIn 0.3s ease-out;
+        }
+
+        /* --- Bottom Section: Betting Board --- */
+        .bottom-section {
+            flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px;
+            position: relative; z-index: 2;
+        }
+        
+        .bet-action-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 100%; margin-bottom: 2px;
+        }
+        .action-btn {
+            background: rgba(0,0,0,0.8); border: 2px solid #fce45e; color: #fce45e;
+            padding: 5px 15px; border-radius: 20px; font-size: 11px; font-weight: 900;
+            cursor: pointer; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        .action-btn:active { transform: scale(0.9); }
+        .action-btn.red { border-color: #de3131; color: #de3131; }
+
+        .betting-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            height: 100%; max-height: 480px; width: 100%; position: relative;
+        }
+        
+        .bet-card {
+            position: relative; border-radius: 8px; cursor: pointer;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.3), 0 5px 10px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; transition: all 0.3s;
+            overflow: visible;
+        }
+        .bet-card:active { transform: scale(0.96); }
+        .bet-card.disabled { filter: grayscale(80%) brightness(0.6); pointer-events: none; }
+
+        .bet-card.winner-pop {
+            transform: scale(1.2) !important; box-shadow: 0 0 30px #fce45e, 0 0 50px #ff0000 !important;
+            border: 3px solid #fff; z-index: 100;
+            filter: grayscale(0%) brightness(1.2) !important; animation: pulseWin 0.5s infinite alternate;
+        }
+        @keyframes pulseWin { to { transform: scale(1.25); box-shadow: 0 0 40px #fce45e, 0 0 60px #ff0000; } }
+
+        /* Floating Top Slot Badge on Card */
+        .top-slot-badge {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%) scale(0);
+            background: #de3131; color: #fce45e; border: 2px solid #fff;
+            padding: 2px 10px; border-radius: 12px; font-weight: 900; font-size: 15px;
+            z-index: 50; box-shadow: 0 5px 15px rgba(0,0,0,0.9);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            white-space: nowrap;
+        }
+        .top-slot-badge.show { transform: translateX(-50%) scale(1.2); }
+
+        /* Card Internals */
+        .card-inner {
+            flex: 1; display: flex; justify-content: center; align-items: center; position: relative;
+            border: 2px solid rgba(255,255,255,0.2); margin: 4px 4px 0 4px; border-radius: 5px 5px 0 0; overflow: hidden;
+        }
+        .num-shield {
+            background: #2a2a2a; color: #fff; padding: 10px 15px; border-radius: 5px;
+            border: 2px solid #e2c050; font-size: 30px; font-weight: 900; z-index: 2; box-shadow: 0 5px 10px rgba(0,0,0,0.5);
+        }
+        .ticket-bg {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: repeating-conic-gradient(rgba(255,255,255,0.1) 0deg 15deg, transparent 15deg 30deg);
+        }
+        .bonus-text { position: relative; z-index: 2; text-align: center; text-shadow: 2px 2px 5px #000; }
+        .payout-label {
+            height: 20px; background: rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center;
+            font-size: 10px; font-weight: bold; color: #fff; letter-spacing: 1px;
+            border-radius: 0 0 5px 5px; margin: 0 4px 4px 4px;
+        }
+
+        .bet-chip {
+            position: absolute; top: -10px; right: -10px; 
+            background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Casino_chip_icon.svg/1024px-Casino_chip_icon.svg.png') no-repeat center/cover;
+            background-color: #fce45e; min-width: 38px; height: 38px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 12px; font-weight: 900; color: #000; padding: 0 5px;
+            border: 2px solid #fff; box-shadow: 0 5px 10px rgba(0,0,0,0.8);
+            opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.1s;
+            z-index: 20;
+        }
+        .bet-chip.active { opacity: 1; transform: scale(1.1); }
+        .bet-chip.active-pop { transform: scale(1.3); }
+
+        .minus-chip {
+            position: absolute; top: -10px; left: -10px; 
+            background: #de3131; width: 32px; height: 32px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 22px; font-weight: 900; color: #fff;
+            border: 2px solid #fff; box-shadow: 0 5px 10px rgba(0,0,0,0.8);
+            opacity: 0; pointer-events: none; transition: all 0.2s;
+            z-index: 25; cursor: pointer;
+        }
+        .minus-chip.show { opacity: 1; pointer-events: auto; }
+        .minus-chip:active { transform: scale(0.9); }
+
+        .c-1x { background: #609e99; } .c-2x { background: #cfa34b; } .c-5x { background: #b46b7a; } .c-10x { background: #766ca7; }
+        .c-cf { background: #4a8cd4; border-left: 5px dashed rgba(255,255,255,0.5); }
+        .c-pa { background: #c257ab; border-left: 5px dashed rgba(255,255,255,0.5); }
+        .c-ch { background: #6ab04c; border-left: 5px dashed rgba(255,255,255,0.5); }
+        .c-ct { background: #de3131; border-left: 5px dashed rgba(255,255,255,0.5); }
+        .f-cf { font-family: 'Alfa Slab One', serif; font-size: 20px; color: #fce45e; line-height: 1; }
+        .f-pa { font-family: 'Great Vibes', cursive; font-size: 30px; color: #fce45e; }
+        .f-ch { font-family: 'Rye', serif; font-size: 20px; color: #fce45e; line-height: 1; }
+        .f-ct { font-family: 'Montserrat', sans-serif; font-weight:900; font-size: 20px; color: #fce45e; line-height: 1; }
+
+        .custom-bet-bar {
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.8); border: 2px solid #fce45e; border-radius: 10px;
+            padding: 10px; margin-bottom: 25px; margin-top: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); z-index: 10;
+        }
+        .custom-bet-bar span { font-weight: bold; font-size: 14px; color: #fff; }
+        .input-group {
+            display: flex; align-items: center; background: #222;
+            border: 2px solid #fce45e; border-radius: 5px; overflow: hidden; height: 35px;
+        }
+        .input-group .currency { background: #fce45e; color: #000; padding: 0 10px; font-weight: 900; line-height: 35px; }
+        .input-group input {
+            background: transparent; border: none; color: #fff;
+            font-size: 18px; font-weight: bold; width: 100px; text-align: center; outline: none;
+        }
+
+        .toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(222, 49, 49, 0.95); color: white; padding: 12px 25px;
+            border-radius: 30px; font-weight: 900; font-size: 16px; border: 2px solid #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8); z-index: 3000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .toast.show { opacity: 1; }
+
+        .floating-win {
+            position: absolute; top: 20%; left: 50%; transform: translate(-50%, 0);
+            font-size: 26px; font-weight: 900; color: #00ff00; text-shadow: 0px 2px 5px #000, 0px 0px 15px #00ff00;
+            z-index: 200; pointer-events: none; animation: floatUpFade 1.8s ease-out forwards;
+        }
+        @keyframes floatUpFade {
+            0% { opacity: 0; transform: translate(-50%, 10px) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -30px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50px) scale(0.8); }
+        }
+
+.betting-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+}
+
+.bet-card {
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.game-img{
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+}
+
+.bet-chip{
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+}
+
+    </style>
+</head>
+<body>
+
+    <div id="toastMessage" class="toast">Limit Reached!</div>
+
+    <div class="top-nav">
+        <div class="back-btn" onclick="window.location.replace('index.html')">❮</div>
+        <div class="status-board" id="status">BETS <span id="timer" style="color:#fce45e;">12</span></div>
+        <div class="right-controls">
+            <div class="top-balance-box">৳ <span id="balance">0</span></div>
+            <div class="menu-container">
+                <div class="hamburger-menu" onclick="toggleMenu()">☰</div>
+                <div class="dropdown-content" id="menuDropdown">
+                    <div onclick="toggleSound()" id="sound-toggle-btn">🔊 Sound: ON</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="top-section">
+        <div class="wheel-row">
+            <div class="top-slot left-slot" id="left-slot">
+                <div class="slot-text" id="slot-segment">-</div>
+            </div>
+            
+            <div class="wheel-container" id="wheel-container">
+                <div class="flapper"></div>
+                <canvas id="wheel" width="800" height="800"></canvas>
+            </div>
+            
+            <div class="top-slot right-slot" id="right-slot">
+                <div class="slot-text multi" id="slot-multi">-</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-bar" id="history-bar"></div>
+
+    <div class="bottom-section">
+        
+        <div class="bet-action-bar">
+            <div class="action-btn" onclick="undoLastBet()">⟲ UNDO</div>
+            <div class="action-btn red" onclick="clearAllBets()">✖ CLEAR ALL</div>
+        </div>
+
+        <div class="betting-grid">
+            <!-- 1x Image Card -->
+            <div class="bet-card c-1x" id="card-1x" onclick="placeBet('1x')">
+                <div class="minus-chip" id="minus-1x" onclick="removeSpecificBet(event, '1x')">−</div>
+                <!-- নিচের src এর জায়গায় আপনার 1x এর ইমেজের লিংক দেবেন -->
+                <img src="https://i.ibb.co/DHTFbgv8/crazy-time-card-2.png" class="game-img" alt="1x">
+                <div class="bet-chip" id="chip-1x">0</div>
+            </div>
+
+            <!-- 2x Image Card -->
+            <div class="bet-card c-2x" id="card-2x" onclick="placeBet('2x')">
+                <div class="minus-chip" id="minus-2x" onclick="removeSpecificBet(event, '2x')">−</div>
+                <!-- নিচের src এর জায়গায় আপনার 2x এর ইমেজের লিংক দেবেন -->
+                <img src="https://i.ibb.co/Vcj4Nw5p/crazy-time-card-3.png" class="game-img" alt="2x">
+                <div class="bet-chip" id="chip-2x">0</div>
+            </div>
+
+            <!-- 5x Image Card -->
+            <div class="bet-card c-5x" id="card-5x" onclick="placeBet('5x')">
+                <div class="minus-chip" id="minus-5x" onclick="removeSpecificBet(event, '5x')">−</div>
+                <!-- নিচের src এর জায়গায় আপনার 5x এর ইমেজের লিংক দেবেন -->
+                <img src="https://i.ibb.co/vSF0Xkc/crazy-time-card-4.png" class="game-img" alt="5x">
+                <div class="bet-chip" id="chip-5x">0</div>
+            </div>
+
+            <!-- 10x Image Card -->
+            <div class="bet-card c-10x" id="card-10x" onclick="placeBet('10x')">
+                <div class="minus-chip" id="minus-10x" onclick="removeSpecificBet(event, '10x')">−</div>
+                <!-- নিচের src এর জায়গায় আপনার 10x এর ইমেজের লিংক দেবেন -->
+                <img src="https://i.ibb.co/XxnwDcHF/crazy-time-card-5.png" class="game-img" alt="10x">
+                <div class="bet-chip" id="chip-10x">0</div>
+            </div>
+            <div class="bet-card c-cf" id="card-Coin Flip" onclick="placeBet('Coin Flip')">
+                <div class="minus-chip" id="minus-Coin Flip" onclick="removeSpecificBet(event, 'Coin Flip')">−</div>
+                <img src="https://i.ibb.co.com/0VMXhDkX/crazy-time-coin-flip.jpg" class="game-img">
+                <div class="bet-chip" id="chip-Coin Flip">0</div>
+            </div>
+
+            <div class="bet-card c-pa" id="card-Pachinko" onclick="placeBet('Pachinko')">
+                <div class="minus-chip" id="minus-Pachinko" onclick="removeSpecificBet(event, 'Pachinko')">−</div>
+                <img src="https://i.ibb.co.com/v6DmvHk7/crazy-tine-pachinko.jpg" class="game-img">
+                <div class="bet-chip" id="chip-Pachinko">0</div>
+            </div>
+
+            <div class="bet-card c-ch" id="card-Cash Hunt" onclick="placeBet('Cash Hunt')">
+                <div class="minus-chip" id="minus-Cash Hunt" onclick="removeSpecificBet(event, 'Cash Hunt')">−</div>
+                <img src="https://i.ibb.co.com/20fqRGdT/crazy-time-cash-hunt.jpg" class="game-img">
+                <div class="bet-chip" id="chip-Cash Hunt">0</div>
+            </div>
+
+            <div class="bet-card c-ct" id="card-Crazy Time" onclick="placeBet('Crazy Time')">
+                <div class="minus-chip" id="minus-Crazy Time" onclick="removeSpecificBet(event, 'Crazy Time')">−</div>
+                <img src="https://i.ibb.co.com/0p15Z6JW/crazy-time-field.jpg" class="game-img">
+                <div class="bet-chip" id="chip-Crazy Time">0</div>
+            </div>
+        
+        <div class="custom-bet-bar">
+            <span>Bet Amount:</span>
+            <div class="input-group">
+                <span class="currency">৳</span>
+                <input type="number" id="custom-bet-amount" value="10" min="1" max="5000">
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // FIREBASE INITIALIZATION & AUTH
+    // ==========================================
+    const firebaseConfig = { apiKey: "AIzaSyB2Gv7FXkDP5AJEm2MrZBEin6rN8YZwnK8", authDomain: "betbd-be722.firebaseapp.com", projectId: "betbd-be722" };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let balance = 0;
+
+    auth.onAuthStateChanged(user => {
+        if(user) {
+            currentUser = user;
+            // Balance Sync via Firebase
+            db.collection("users").doc(user.uid).onSnapshot(doc => {
+                if(doc.exists) {
+                    balance = doc.data().balance;
+                    updateBalanceUI();
+                }
+            });
+
+            // ====== BONUS WIN CATCHER ======
+            // বোনাস গেম থেকে ফিরে আসলে টাকা যোগ করার কোড
+            let pendingWin = localStorage.getItem('pending_bonus_win');
+            if (pendingWin && parseFloat(pendingWin) > 0) {
+                let winAmt = parseFloat(pendingWin);
+                db.collection("users").doc(currentUser.uid).update({ 
+                    balance: firebase.firestore.FieldValue.increment(winAmt) 
+                });
+                showToast("BONUS WIN: ৳" + winAmt);
+                localStorage.removeItem('pending_bonus_win');
+                localStorage.removeItem('crazy_ch_bet');
+                localStorage.removeItem('crazy_pa_bet');
+                localStorage.removeItem('crazy_cf_bet');
+                localStorage.removeItem('crazy_ct_bet');
+            }
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+
+    let soundEnabled = true;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    document.body.addEventListener('click', () => { if (audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
+
+    function toggleMenu() { document.getElementById("menuDropdown").classList.toggle("show"); }
+    function toggleSound() { soundEnabled = !soundEnabled; document.getElementById("sound-toggle-btn").innerText = soundEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF"; toggleMenu(); }
+    function showToast(msg) { const toast = document.getElementById("toastMessage"); toast.innerText = msg; toast.classList.add("show"); setTimeout(() => { toast.classList.remove("show"); }, 2500); }
+
+    function playTickSound() {
+        if (!soundEnabled || audioCtx.state === 'suspended') return;
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = 'square'; osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.03);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime); 
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+        osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.03);
+    }
+
+    const canvas = document.getElementById('wheel'); const ctx = canvas.getContext('2d');
+    const wheelContainer = document.getElementById('wheel-container');
+    const centerX = canvas.width / 2; const centerY = canvas.height / 2; const radius = 350;
+
+    const colors = { '1x': '#97d8db', '2x': '#fcd955', '5x': '#f285a2', '10x': '#aa89c4', 'Coin Flip': '#4a8cd4', 'Pachinko': '#c257ab', 'Cash Hunt': '#7dbf6a', 'Crazy Time': '#de3131' };
+    const segments = ['1x', '2x', '5x', '1x', 'Coin Flip', '2x', '1x', 'Pachinko', '1x', '2x', '1x', 'Cash Hunt', '2x', '10x', '1x', 'Crazy Time', '1x', '2x', '5x', '1x', 'Coin Flip', '2x', '1x', '10x', '1x', 'Pachinko', '1x', '2x', '5x', '1x', 'Cash Hunt', '2x', '1x', 'Coin Flip', '1x', '2x', '5x', '1x', 'Crazy Time', '2x', '1x', 'Pachinko', '1x', '2x', '10x', '1x', 'Cash Hunt', '1x', '5x', '2x', '1x', 'Coin Flip', '1x', '5x'];
+    const numSegments = segments.length; const arc = (2 * Math.PI) / numSegments;
+    
+    let currentRotation = 0; let isSpinning = false; let idleSpin = true; let gamePhase = 'betting';
+    let currentBets = { '1x': 0, '2x': 0, '5x': 0, '10x': 0, 'Coin Flip': 0, 'Pachinko': 0, 'Cash Hunt': 0, 'Crazy Time': 0 };
+    let roundBetHistory = []; 
+
+    // Mapping for Firebase integration
+    const segMapA2U = { '1': '1x', '2': '2x', '5': '5x', '10': '10x', 'cf': 'Coin Flip', 'p': 'Pachinko', 'ch': 'Cash Hunt', 'ct': 'Crazy Time' };
+    const segMapU2A = { '1x': '1', '2x': '2', '5x': '5', '10x': '10', 'Coin Flip': 'cf', 'Pachinko': 'p', 'Cash Hunt': 'ch', 'Crazy Time': 'ct' };
+
+    // ==========================================
+    // TOP SLOT (SPIN X) VARIABLES
+    // ==========================================
+    const slotSegmentsList = ['1x', '2x', '5x', '10x', 'Coin Flip', 'Pachinko', 'Cash Hunt', 'Crazy Time'];
+    const slotMultipliersList = [2, 3, 5, 7, 10, 15, 20, 25, 50];
+    let activeTopSlotSegment = null;
+    let activeTopSlotMulti = 1;
+    let slotSpinInterval;
+
+    function formatSlotText(text) { if(text.includes(' ')) return `<span class="slot-text bonus-text-style">${text.replace(' ', '<br>')}</span>`; return text; }
+
+    function updateBalanceUI() { 
+        document.getElementById('balance').innerText = balance.toFixed(2);
+        localStorage.setItem('crazy_balance', balance); // For bonus games compatibility
+    }
+
+    function drawWheel() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < numSegments; i++) {
+            const angle = currentRotation + i * arc; const type = segments[i];
+            ctx.beginPath(); ctx.fillStyle = colors[type]; ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, angle, angle + arc); ctx.fill();
+            ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
+            ctx.save(); ctx.translate(centerX, centerY); ctx.rotate(angle + arc / 2);
+            if (type.includes('x')) {
+                ctx.translate(radius - 40, 0); ctx.rotate(Math.PI / 2); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = (type === '1x' || type === '2x') ? '#000' : '#fff'; ctx.font = "900 35px Montserrat"; ctx.fillText(type.replace('x',''), 0, 0);
+            } else {
+                ctx.translate(radius - 80, 0); ctx.rotate(Math.PI); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                if (type === 'Coin Flip') { ctx.font = "900 25px 'Alfa Slab One'"; ctx.fillStyle = "#fce45e"; ctx.fillText("COIN FLIP", 0, 0); }
+                else if (type === 'Pachinko') { ctx.font = "35px 'Great Vibes'"; ctx.fillStyle = "#fff"; ctx.fillText("Pachinko", 0, -5); }
+                else if (type === 'Cash Hunt') { ctx.font = "28px 'Rye'"; ctx.fillStyle = "#fce45e"; ctx.fillText("CASH HUNT", 0, 0); }
+                else if (type === 'Crazy Time') { ctx.font = "900 25px 'Montserrat'"; ctx.fillStyle = "#fce45e"; ctx.fillText("CRAZY TIME", 0, 0); }
+            }
+            ctx.restore();
+        }
+        ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.lineWidth = 25; ctx.strokeStyle = '#d4af37'; ctx.stroke();
+        for (let i = 0; i < numSegments; i++) {
+            const angle = currentRotation + i * arc; const pinX = centerX + Math.cos(angle) * radius; const pinY = centerY + Math.sin(angle) * radius;
+            ctx.beginPath(); ctx.arc(pinX, pinY, 7, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#555'; ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(centerX, centerY, 80, 0, Math.PI*2); ctx.fillStyle = '#de3131'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = '#fce45e'; ctx.stroke();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = "900 30px 'Alfa Slab One'"; ctx.fillStyle = '#fce45e'; ctx.fillText("CRAZY", centerX, centerY - 15);
+        ctx.font = "900 20px 'Montserrat'"; ctx.fillStyle = '#fff'; ctx.fillText("TIME", centerX, centerY + 20);
+    }
+    setTimeout(drawWheel, 500);
+
+    function animate() { if (idleSpin && !isSpinning) { currentRotation += 0.0015; drawWheel(); } requestAnimationFrame(animate); }
+    drawWheel(); animate();
+
+    const statusEl = document.getElementById('status');
+
+    // ==========================================
+    // BETTING WITH FIREBASE
+    // ==========================================
+    function placeBet(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (gamePhase !== 'betting') return;
+        
+        let customInput = document.getElementById('custom-bet-amount').value;
+        let betAmount = parseInt(customInput);
+
+        if (isNaN(betAmount) || betAmount <= 0) { showToast("Please enter a valid amount!"); return; }
+        if (currentBets[type] + betAmount > 5000) { showToast("Max limit ৳5000 per board!"); return; }
+
+        if (balance >= betAmount) {
+            // Deduct via Firebase
+            db.collection("users").doc(currentUser.uid).update({ balance: firebase.firestore.FieldValue.increment(-betAmount) });
+            currentBets[type] += betAmount;
+            
+            // Send live bet to admin panel
+            db.collection("games").doc("crazytime").collection("live_bets").doc(currentUser.uid + "_" + segMapU2A[type]).set({
+                uid: currentUser.uid, segment: segMapU2A[type], amount: currentBets[type], time: Date.now()
+            });
+
+            roundBetHistory.push({ type: type, amount: betAmount });
+            const chip = document.getElementById(`chip-${type}`);
+            chip.innerText = currentBets[type]; chip.classList.add('active');
+            chip.classList.add('active-pop'); setTimeout(() => chip.classList.remove('active-pop'), 150);
+
+            document.getElementById(`minus-${type}`).classList.add('show');
+            playTickSound();
+        } else { showToast("Insufficient Fund!"); }
+    }
+
+    function removeSpecificBet(event, type) {
+        event.stopPropagation(); 
+        if (gamePhase !== 'betting') return;
+        if (currentBets[type] > 0) {
+            let customInput = document.getElementById('custom-bet-amount').value;
+            let removeAmount = parseInt(customInput);
+            if (removeAmount > currentBets[type]) { removeAmount = currentBets[type]; }
+            
+            // Refund via Firebase
+            db.collection("users").doc(currentUser.uid).update({ balance: firebase.firestore.FieldValue.increment(removeAmount) });
+            currentBets[type] -= removeAmount;
+            
+            // Update live bet
+            db.collection("games").doc("crazytime").collection("live_bets").doc(currentUser.uid + "_" + segMapU2A[type]).update({
+                amount: currentBets[type]
+            });
+
+            const chip = document.getElementById(`chip-${type}`);
+            chip.innerText = currentBets[type];
+            if (currentBets[type] <= 0) {
+                chip.classList.remove('active'); document.getElementById(`minus-${type}`).classList.remove('show');
+            } else { chip.classList.add('active-pop'); setTimeout(() => chip.classList.remove('active-pop'), 150); }
+            playTickSound();
+        }
+    }
+
+    function undoLastBet() {
+        if (gamePhase !== 'betting') { showToast("Cannot undo now!"); return; }
+        if (roundBetHistory.length === 0) { showToast("No bets to undo!"); return; }
+        let lastBet = roundBetHistory.pop();
+        if (currentBets[lastBet.type] < lastBet.amount) { lastBet.amount = currentBets[lastBet.type]; }
+        
+        // Refund via Firebase
+        db.collection("users").doc(currentUser.uid).update({ balance: firebase.firestore.FieldValue.increment(lastBet.amount) });
+        currentBets[lastBet.type] -= lastBet.amount;
+        
+        db.collection("games").doc("crazytime").collection("live_bets").doc(currentUser.uid + "_" + segMapU2A[lastBet.type]).update({
+            amount: currentBets[lastBet.type]
+        });
+
+        const chip = document.getElementById(`chip-${lastBet.type}`);
+        chip.innerText = currentBets[lastBet.type];
+        if (currentBets[lastBet.type] <= 0) {
+            chip.classList.remove('active'); document.getElementById(`minus-${lastBet.type}`).classList.remove('show');
+        } else { chip.classList.add('active-pop'); setTimeout(() => chip.classList.remove('active-pop'), 150); }
+        playTickSound();
+    }
+
+    function clearAllBets() {
+        if (gamePhase !== 'betting') { showToast("Cannot clear now!"); return; }
+        if (roundBetHistory.length === 0) return;
+        
+        let totalRefund = 0;
+        while(roundBetHistory.length > 0) { roundBetHistory.pop(); }
+        for (let key in currentBets) {
+            if (currentBets[key] > 0) { 
+                totalRefund += currentBets[key]; 
+                currentBets[key] = 0; 
+                db.collection("games").doc("crazytime").collection("live_bets").doc(currentUser.uid + "_" + segMapU2A[key]).delete();
+            }
+            document.getElementById(`chip-${key}`).innerText = 0;
+            document.getElementById(`chip-${key}`).classList.remove('active');
+            document.getElementById(`minus-${key}`).classList.remove('show');
+        }
+        if(totalRefund > 0) {
+            db.collection("users").doc(currentUser.uid).update({ balance: firebase.firestore.FieldValue.increment(totalRefund) });
+        }
+        playTickSound();
+    }
+
+    function toggleCards(disable) {
+        document.querySelectorAll('.bet-card').forEach(card => {
+            if (disable && !card.classList.contains('winner-pop')) card.classList.add('disabled');
+            else card.classList.remove('disabled');
+        });
+    }
+
+    // ==========================================
+    // FIREBASE SYNC: COUNTDOWN, SPIN & LATE JOIN FIX
+    // ==========================================
+    let timerIntervalFirebase = null;
+    let isInitialLoad = true; // ইউজার কেবল গেমে ঢুকেছে কিনা ট্র্যাক করার জন্য
+
+    db.collection("games").doc("crazytime").onSnapshot(doc => {
+        if(!doc.exists) return;
+        let data = doc.data();
+        let serverNow = Date.now();
+
+        if (data.state === 'wait') {
+            if (gamePhase !== 'betting') {
+                startCountdownFirebase(data.endTime);
+            }
+        } 
+        else if (data.state === 'spin') {
+            let elapsedSpinTime = serverNow - data.timestamp;
+            
+            // যদি ইউজার পেজে আগে থেকেই থাকে
+            if (!isInitialLoad && gamePhase !== 'spinning' && gamePhase !== 'result') {
+                clearInterval(timerIntervalFirebase);
+                let targetUI = segMapA2U[data.result.segment];
+                let tsUI = { segment: segMapA2U[data.topSlot.segment], mult: data.topSlot.mult };
+                startSpinFirebase(targetUI, tsUI);
+            } 
+            // যদি ইউজার চাকা ঘোরার মাঝপথে গেমে ঢুকে
+            else if (isInitialLoad && elapsedSpinTime < 8500) {
+                clearInterval(timerIntervalFirebase);
+                gamePhase = 'spinning';
+                toggleCards(true);
+                statusEl.innerHTML = `<span style="color:#fce45e;">WHEEL SPINNING...</span>`;
+                isSpinning = true;
+                idleSpin = false;
+                // অ্যানিমেশন স্কিপ করে শুধু চাকা ঘোরার স্ট্যাটাস দেখানো হলো, যাতে টাইম গ্লিচ না হয়
+            }
+        }
+        else if (data.state === 'result') {
+            let seg = data.result.segment;
+            let isBonus = ['cf', 'p', 'ch', 'ct'].includes(seg);
+            let elapsedResultTime = serverNow - data.timestamp;
+
+            // ইউজার যদি গেম ওপেন করার পর দেখে যে বোনাস গেম রানিং (28 সেকেন্ডের মধ্যে)
+            if (isInitialLoad && isBonus && elapsedResultTime < 28000) {
+                statusEl.innerHTML = "RECONNECTING TO BONUS...";
+                gamePhase = 'result';
+                toggleCards(true);
+                
+                let betPlaced = currentBets[segMapA2U[seg]] || 0;
+                setTimeout(() => {
+                    if(seg === 'ch') { localStorage.setItem('crazy_ch_bet', betPlaced); window.location.replace("cashunt.html"); }
+                    else if(seg === 'p') { localStorage.setItem('crazy_pa_bet', betPlaced); window.location.replace("pachinko.html"); }
+                    else if(seg === 'ct') { localStorage.setItem('crazy_ct_bet', betPlaced); window.location.replace("crazytime_bonus.html"); }
+                    else if(seg === 'cf') { localStorage.setItem('crazy_cf_bet', betPlaced); window.location.replace("coinflip.html"); }
+                }, 500);
+            } 
+            // ইউজার যদি নরমাল রেজাল্ট দেখার পর ঢুকে
+            else if (isInitialLoad && gamePhase !== 'result') {
+                statusEl.innerHTML = "WAITING FOR NEXT ROUND...";
+                gamePhase = 'result';
+                toggleCards(true);
+            }
+        }
+        
+        isInitialLoad = false;
+    });
+
+    function startCountdownFirebase(endTime) {
+        gamePhase = 'betting'; idleSpin = true; roundBetHistory = []; 
+        document.querySelectorAll('.bet-card').forEach(c => c.classList.remove('winner-pop'));
+        document.querySelectorAll('.top-slot-badge').forEach(b => b.remove());
+        document.getElementById('left-slot').classList.remove('highlight');
+        document.getElementById('right-slot').classList.remove('highlight');
+        document.getElementById('slot-segment').innerHTML = "-";
+        document.getElementById('slot-multi').innerHTML = "-";
+        
+        toggleCards(false);
+
+        for (let key in currentBets) {
+            currentBets[key] = 0;
+            document.getElementById(`chip-${key}`).classList.remove('active');
+            document.getElementById(`minus-${key}`).classList.remove('show');
+        }
+        
+        clearInterval(timerIntervalFirebase);
+        // টাইম গ্লিচ এড়াতে ১০০ মিলি-সেকেন্ড পরপর টাইম চেক করা হচ্ছে
+        timerIntervalFirebase = setInterval(() => {
+            let timeLeft = Math.ceil((endTime - Date.now()) / 1000);
+            
+            if (timeLeft <= 0) { 
+                clearInterval(timerIntervalFirebase); 
+                toggleCards(true);
+                // টাইম জিরো হলে স্ট্যাটাস চেঞ্জ হয়ে ওয়েটিং দেখাবে, হ্যাং হবে না
+                statusEl.innerHTML = `<span style="color:#ff3b3b;">BETS CLOSED</span>`;
+            } else {
+                statusEl.innerHTML = `BETS <span id="timer" style="color:#fce45e;">${timeLeft}</span>`;
+            }
+        }, 100); 
+    }
+
+    // ==========================================
+    // TOP SLOT (SPIN X) ANIMATION
+    // ==========================================
+    function startTopSlot() {
+        let segEl = document.getElementById('slot-segment');
+        let mulEl = document.getElementById('slot-multi');
+        
+        slotSpinInterval = setInterval(() => {
+            let randomSeg = slotSegmentsList[Math.floor(Math.random() * slotSegmentsList.length)];
+            let randomMul = slotMultipliersList[Math.floor(Math.random() * slotMultipliersList.length)];
+            segEl.innerHTML = formatSlotText(randomSeg);
+            mulEl.innerHTML = randomMul + "x";
+        }, 100);
+    }
+
+    function stopTopSlot() {
+        clearInterval(slotSpinInterval);
+        
+        // Use Firebase values assigned in startSpinFirebase
+        document.getElementById('slot-segment').innerHTML = formatSlotText(activeTopSlotSegment);
+        document.getElementById('slot-multi').innerHTML = activeTopSlotMulti + "x";
+        
+        document.getElementById('left-slot').classList.add('highlight');
+        document.getElementById('right-slot').classList.add('highlight');
+
+        let targetCard = document.getElementById(`card-${activeTopSlotSegment}`);
+        if(targetCard) {
+           let badge = document.createElement('div');
+           badge.className = 'top-slot-badge';
+           badge.innerText = activeTopSlotMulti + "X";
+           targetCard.appendChild(badge);
+           setTimeout(() => badge.classList.add('show'), 100);
+        }
+    }
+
+    function startSpinFirebase(targetSegment, topSlotData) {
+        gamePhase = 'spinning'; toggleCards(true); statusEl.innerHTML = `SPINNING...`;
+        isSpinning = true; idleSpin = false;
+        
+        // Setup Firebase Top Slot Data
+        activeTopSlotSegment = topSlotData.segment; 
+        activeTopSlotMulti = topSlotData.mult;
+
+        startTopSlot(); 
+        setTimeout(stopTopSlot, 2000); // Stop animation and show true result
+
+        const matches = []; segments.forEach((seg, i) => { if(seg === targetSegment) matches.push(i); });
+        let targetIndex = matches[Math.floor(Math.random() * matches.length)];
+
+        const spinMultiplier = 12; const targetAngleOffset = (targetIndex * arc) + (arc / 2);
+        let finalMod = (3 * Math.PI / 2) - targetAngleOffset; while (finalMod < 0) finalMod += 2 * Math.PI;
+        let startRotationMod = currentRotation % (2 * Math.PI); if(startRotationMod < 0) startRotationMod += 2 * Math.PI;
+        let spinDiff = finalMod - startRotationMod; if (spinDiff < 0) spinDiff += 2 * Math.PI;
+
+        let startRotation = currentRotation; let endRotation = startRotation + (spinMultiplier * 2 * Math.PI) + spinDiff;
+        let startTime = null; const spinDuration = 8500; 
+        let lastTickAngle = Math.floor(currentRotation / arc);
+
+        function easeOutQuart(x) { return 1 - Math.pow(1 - x, 4); }
+
+        function spinAnimation(time) {
+            if (!startTime) startTime = time; const progress = (time - startTime) / spinDuration;
+            if (progress < 1) {
+                currentRotation = startRotation + (endRotation - startRotation) * easeOutQuart(progress); drawWheel();
+                let currentTickAngle = Math.floor(currentRotation / arc);
+                if (currentTickAngle !== lastTickAngle) { playTickSound(); lastTickAngle = currentTickAngle; }
+                requestAnimationFrame(spinAnimation);
+            } else {
+                currentRotation = endRotation % (2 * Math.PI); drawWheel(); isSpinning = false;
+                showResult(segments[targetIndex]);
+            }
+        }
+        requestAnimationFrame(spinAnimation);
+    }
+
+    function showResult(winningSegment) {
+        gamePhase = 'result'; 
+        statusEl.innerHTML = `RESULT: ${winningSegment}`;
+
+        setTimeout(() => {
+            const winCard = document.getElementById(`card-${winningSegment}`);
+            winCard.classList.remove('disabled'); winCard.classList.add('winner-pop');
+            let betPlaced = currentBets[winningSegment];
+
+            let finalMulti = 1; 
+            if (winningSegment === activeTopSlotSegment) {
+                finalMulti = activeTopSlotMulti;
+            }
+            
+            localStorage.setItem('crazy_top_slot_multi', finalMulti);
+
+            if (winningSegment === 'Cash Hunt') { 
+                statusEl.innerHTML = `<span style="color: #0f0; font-size:20px;">BONUS: CASH HUNT!</span>`;
+                localStorage.setItem('crazy_ch_bet', betPlaced || 0); 
+                setTimeout(() => { window.location.replace("cashunt.html"); }, 2000); return; 
+            }
+            if (winningSegment === 'Pachinko') { 
+                statusEl.innerHTML = `<span style="color: #c257ab; font-size:20px;">BONUS: PACHINKO!</span>`;
+                localStorage.setItem('crazy_pa_bet', betPlaced || 0); 
+                setTimeout(() => { window.location.replace("pachinko.html"); }, 2000); return; 
+            }
+            if (winningSegment === 'Crazy Time') { 
+                statusEl.innerHTML = `<span style="color: #de3131; font-size:20px;">BONUS: CRAZY TIME!</span>`;
+                localStorage.setItem('crazy_ct_bet', betPlaced || 0); 
+                setTimeout(() => { window.location.replace("crazytime_bonus.html"); }, 2000); return; 
+            }
+            if (winningSegment === 'Coin Flip') { 
+                statusEl.innerHTML = `<span style="color: #4a8cd4; font-size:20px;">BONUS: COIN FLIP!</span>`;
+                localStorage.setItem('crazy_cf_bet', betPlaced || 0); 
+                setTimeout(() => { window.location.replace("coinflip.html"); }, 2000); return; 
+            }
+
+            let winAmount = 0; 
+            if (betPlaced > 0) {
+                let baseVal = parseInt(winningSegment.replace('x',''));
+                let totalWinMulti = baseVal * finalMulti; 
+                
+                if (winningSegment === '1x' || winningSegment === '2x' || winningSegment === '5x' || winningSegment === '10x') {
+                    winAmount = betPlaced + (betPlaced * totalWinMulti);
+                }
+                
+                // Add Win to Firebase
+                db.collection("users").doc(currentUser.uid).update({ balance: firebase.firestore.FieldValue.increment(winAmount) });
+                
+                statusEl.innerHTML = `<span style="color: #0f0;">WIN: ${winningSegment}</span>`;
+                let floatText = document.createElement('div'); floatText.className = 'floating-win';
+                floatText.innerText = `+ ৳${winAmount}`; winCard.appendChild(floatText);
+                setTimeout(() => { floatText.remove(); }, 2000);
+            } else { 
+                statusEl.innerHTML = `RESULT: ${winningSegment}`; 
+            }
+
+        }, 1000); 
+    }
+// ==========================================
+    // MOBILE BACK BUTTON FIX
+    // ==========================================
+    window.history.pushState(null, null, window.location.href);
+    window.addEventListener('popstate', function(event) {
+        window.location.replace('index.html');
+    });
+</script>
+</body>
+</html>

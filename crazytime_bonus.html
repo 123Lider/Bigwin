@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Casino - Crazy Time Bonus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    
+    <!-- ====== ADDED FIREBASE SCRIPTS ====== -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        body {
+            margin: 0; padding: 0; 
+            background: linear-gradient(to bottom, #1d6ca1 0%, #d48b59 40%, #4a1515 50%, #210505 100%);
+            color: white; font-family: 'Montserrat', sans-serif; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 100vh;
+        }
+
+        /* Top Header */
+        .header {
+            width: 100%; max-width: 500px; padding: 10px 15px; box-sizing: border-box;
+            display: flex; justify-content: space-between; z-index: 200; position: absolute; top: 0;
+        }
+        .info-box {
+            background: rgba(0, 0, 0, 0.6); border: 2px solid #d4af37; padding: 5px 12px;
+            border-radius: 8px; text-align: center; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+        }
+        .info-box span { color: #fce45e; font-size: 14px; font-weight: 900; display: block; }
+
+        /* The Big Wheel Container */
+        .game-wrapper {
+            position: relative; width: 95vw; max-width: 480px; height: 95vw; max-height: 480px;
+            margin-top: 50px; display: flex; justify-content: center; align-items: center;
+        }
+
+        .wheel-container {
+            position: relative; width: 100%; height: 100%;
+            transition: transform 0.5s ease;
+        }
+
+        /* Flappers */
+        .flapper-group {
+            position: absolute; top: -35px; left: 0; width: 100%; height: 60px;
+            pointer-events: none; z-index: 150; display: flex; justify-content: center;
+        }
+        
+        .flapper {
+            position: absolute; width: 40px; height: 50px; top: 0;
+            clip-path: polygon(0 0, 100% 0, 50% 100%); 
+            transform-origin: 50% 0;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.9));
+            transition: transform 0.3s, filter 0.3s, opacity 0.3s;
+        }
+        
+        .flapper.green { left: 50%; background: linear-gradient(to bottom, #00ff00, #005500); transform: translateX(-160px) rotate(-30deg); }
+        .flapper.blue { left: 50%; background: linear-gradient(to bottom, #00ccff, #0022aa); transform: translateX(-50%) rotate(0deg); }
+        .flapper.yellow { left: 50%; background: linear-gradient(to bottom, #ffff00, #aa9900); transform: translateX(110px) rotate(30deg); }
+
+        .flapper.active { filter: drop-shadow(0 0 20px #fff); z-index: 160; transform: scale(1.2) translateX(-40%) rotate(0deg); }
+        .flapper.green.active { transform: scale(1.2) translateX(-130px) rotate(-30deg); }
+        .flapper.yellow.active { transform: scale(1.2) translateX(90px) rotate(30deg); }
+        .flapper.finished { opacity: 0.3; filter: grayscale(100%); }
+
+        canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
+
+        /* Bottom Selection UI */
+        .bottom-panel {
+            position: absolute; bottom: 0; width: 100%; max-width: 500px;
+            height: 40vh; background: rgba(50, 10, 10, 0.95);
+            border-top: 3px solid #d4af37; box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; align-items: center; padding-top: 20px;
+            z-index: 250;
+        }
+
+        .panel-title {
+            font-size: 20px; font-weight: bold; color: #fff; letter-spacing: 1px;
+            margin-bottom: 25px; text-shadow: 1px 1px 3px #000;
+        }
+
+        /* 8 Seconds Timer Badge */
+        .timer-badge {
+            position: absolute; left: 20px; bottom: 30px;
+            width: 50px; height: 50px; border-radius: 50%;
+            background: rgba(0,0,0,0.8); border: 2px solid #fff;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; font-weight: 900; color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+
+        /* Triangle Buttons */
+        .btn-group { display: flex; gap: 20px; justify-content: center; width: 100%; }
+        
+        .tri-btn {
+            width: 90px; height: 80px; 
+            clip-path: polygon(0 0, 100% 0, 50% 100%);
+            display: flex; justify-content: center; cursor: pointer; 
+            transition: transform 0.2s, filter 0.2s;
+        }
+        .tri-btn:active { transform: scale(0.9); }
+        .tri-btn.disabled { filter: grayscale(100%); cursor: not-allowed; opacity: 0.5; }
+        .tri-btn.selected { transform: scale(1.1); filter: drop-shadow(0 0 15px #fff); }
+
+        .tri-btn.green { background: #00ff00; }
+        .tri-btn.blue { background: #00ccff; }
+        .tri-btn.yellow { background: #ffcc00; }
+
+        .tri-inner-1 { width: 76px; height: 68px; background: #220000; margin-top: 6px; clip-path: polygon(0 0, 100% 0, 50% 100%); display: flex; justify-content: center; }
+        .tri-btn.green .tri-inner-2 { background: linear-gradient(to bottom, #008800, #00ff00); }
+        .tri-btn.blue .tri-inner-2 { background: linear-gradient(to bottom, #0044aa, #00ccff); }
+        .tri-btn.yellow .tri-inner-2 { background: linear-gradient(to bottom, #aa8800, #ffcc00); }
+        
+        .tri-inner-2 { width: 66px; height: 58px; margin-top: 4px; clip-path: polygon(0 0, 100% 0, 50% 100%); display: flex; justify-content: center; }
+        .tri-core { width: 25px; height: 20px; background: linear-gradient(to bottom, #fce45e, #c49a1d); clip-path: polygon(0 0, 100% 0, 50% 100%); margin-top: 8px; }
+
+        /* Winner Overlay */
+        .overlay-msg {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-size: 30px; font-weight: 900; color: #0f0; text-shadow: 0 5px 15px #000;
+            z-index: 500; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center; width: 100%; background: rgba(0,0,0,0.9); padding: 25px 0; border-top: 3px solid #fce45e; border-bottom: 3px solid #fce45e;
+        }
+        .overlay-msg.show { transform: translate(-50%, -50%) scale(1); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="info-box">Your Bet <span id="bet-amount">৳0</span></div>
+        <div class="info-box">Fund <span id="balance">৳0</span></div>
+    </div>
+
+    <div class="game-wrapper">
+        <div class="flapper-group">
+            <div class="flapper green" id="flap-green"></div>
+            <div class="flapper blue" id="flap-blue"></div>
+            <div class="flapper yellow" id="flap-yellow"></div>
+        </div>
+        <div class="wheel-container" id="wheel-container">
+            <canvas id="wheel" width="800" height="800"></canvas>
+        </div>
+    </div>
+
+    <div class="bottom-panel" id="controls-panel">
+        <div class="panel-title" id="status-msg">PICK FLAPPER COLOR</div>
+        
+        <div class="btn-group" id="btn-group">
+            <div class="tri-btn green" id="btn-green" onclick="selectFlapper('green', true)">
+                <div class="tri-inner-1"><div class="tri-inner-2"><div class="tri-core"></div></div></div>
+            </div>
+            <div class="tri-btn blue" id="btn-blue" onclick="selectFlapper('blue', true)">
+                <div class="tri-inner-1"><div class="tri-inner-2"><div class="tri-core"></div></div></div>
+            </div>
+            <div class="tri-btn yellow" id="btn-yellow" onclick="selectFlapper('yellow', true)">
+                <div class="tri-inner-1"><div class="tri-inner-2"><div class="tri-core"></div></div></div>
+            </div>
+        </div>
+
+        <div class="timer-badge" id="timer">8</div>
+    </div>
+
+    <div class="overlay-msg" id="overlay-msg"></div>
+
+<script>
+    // ==========================================
+    // 1. FIREBASE AUTH & SETUP
+    // ==========================================
+    const firebaseConfig = { apiKey: "AIzaSyB2Gv7FXkDP5AJEm2MrZBEin6rN8YZwnK8", authDomain: "betbd-be722.firebaseapp.com", projectId: "betbd-be722" };
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const auth = firebase.auth(); 
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    auth.onAuthStateChanged(user => {
+        if(user) { currentUser = user; } 
+        else { window.location.href = 'index.html'; }
+    });
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    // ==========================================
+    // 2. CONNECT DATA (Top Slot & Bet)
+    // ==========================================
+    let betAmount = parseInt(localStorage.getItem('crazy_ct_bet')) || 0;
+    let balance = parseFloat(localStorage.getItem('crazy_balance')) || 0;
+    let topSlotMulti = parseInt(localStorage.getItem('crazy_top_slot_multi')) || 1; // Main গেম থেকে আসা Spin X
+
+    document.getElementById('bet-amount').innerText = `৳${betAmount}`;
+    document.getElementById('balance').innerText = `৳${balance}`;
+
+    let segments = [
+        10, 20, 50, 'DOUBLE', 15, 10, 25, 10, 'TRIPLE', 15, 10, 20, 
+        10, 50, 'DOUBLE', 15, 10, 25, 10, 15, 10, 20, 'TRIPLE', 5
+    ];
+
+    let ADMIN_TARGET_INDEX = Math.floor(Math.random() * 24); 
+
+    const colors = ['#f285a2', '#97d8db', '#fcd955', '#de3131', '#aa89c4', '#6ab04c'];
+    
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 370;
+    const numSegments = segments.length;
+    const arc = (2 * Math.PI) / numSegments;
+
+    let currentRotation = 0;
+    let userFlapper = null; 
+    let selectionLocked = false;
+    
+    let activeFlappers = { 'green': true, 'blue': true, 'yellow': true };
+    let userFinished = false;
+    let finalUserWin = 0;
+    
+    // Flapper Angles at Top (-Math.PI/2)
+    const flapperAngles = {
+        'green': -Math.PI / 2 - (arc * 2), 
+        'blue': -Math.PI / 2,              
+        'yellow': -Math.PI / 2 + (arc * 2) 
+    };
+
+    function drawWheel() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (let i = 0; i < numSegments; i++) {
+            const angle = currentRotation + i * arc;
+            const val = segments[i];
+            
+            ctx.beginPath();
+            ctx.fillStyle = (val === 'DOUBLE' || val === 'TRIPLE') ? '#de3131' : colors[i % colors.length];
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, angle, angle + arc);
+            ctx.fill();
+            ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(angle + arc / 2);
+            ctx.translate(radius - 50, 0);
+            ctx.rotate(Math.PI / 2); 
+            
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            if (val === 'DOUBLE' || val === 'TRIPLE') {
+                ctx.fillStyle = '#fff'; ctx.font = "900 24px Montserrat";
+                ctx.fillText(val, 0, 0);
+            } else {
+                ctx.fillStyle = '#000'; ctx.font = "900 42px Montserrat";
+                ctx.fillText(val + 'x', 0, 0);
+            }
+            ctx.restore();
+        }
+
+        ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); 
+        ctx.lineWidth = 22; ctx.strokeStyle = '#d4af37'; ctx.stroke();
+        
+        for(let i=0; i<60; i++) {
+            let bulbAngle = i * (Math.PI * 2) / 60;
+            let bx = centerX + Math.cos(bulbAngle) * radius;
+            let by = centerY + Math.sin(bulbAngle) * radius;
+            ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI*2);
+            ctx.fillStyle = (i % 2 === 0) ? '#fff' : '#ffcc00'; ctx.fill();
+        }
+
+        ctx.beginPath(); ctx.arc(centerX, centerY, 90, 0, Math.PI*2); 
+        ctx.fillStyle = '#110044'; ctx.fill();
+        ctx.lineWidth = 8; ctx.strokeStyle = '#d4af37'; ctx.stroke();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = "900 30px 'Alfa Slab One'"; ctx.fillStyle = '#fce45e'; ctx.fillText("CRAZY", centerX, centerY - 15);
+        ctx.font = "900 20px 'Montserrat'"; ctx.fillStyle = '#fff'; ctx.fillText("TIME", centerX, centerY + 20);
+    }
+    
+    drawWheel();
+
+    // ==========================================
+    // LIVE COUNTDOWN LOGIC (8 Seconds)
+    // ==========================================
+    let countdown = 8;
+    let timerInterval;
+
+    function startLiveTimer() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        timerInterval = setInterval(() => {
+            countdown--;
+            document.getElementById('timer').innerText = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(timerInterval);
+                selectionLocked = true; 
+                document.getElementById('timer').style.display = 'none'; 
+                
+                if (!userFlapper) {
+                    selectFlapper('blue', false);
+                    document.getElementById('status-msg').innerText = "AUTO SELECTED BLUE!";
+                    document.getElementById('status-msg').style.color = "#0cf";
+                }
+
+                ['green', 'blue', 'yellow'].forEach(c => {
+                    if(c !== userFlapper) document.getElementById(`btn-${c}`).classList.add('disabled');
+                });
+                
+                setTimeout(spinCrazyWheel, 1000);
+            }
+        }, 1000);
+    }
+
+    function selectFlapper(color, byUser) {
+        if (selectionLocked || userFlapper) return; 
+        userFlapper = color;
+        
+        ['green', 'blue', 'yellow'].forEach(c => {
+            let btn = document.getElementById(`btn-${c}`);
+            let flap = document.getElementById(`flap-${c}`);
+            if (c === color) {
+                btn.classList.add('selected');
+                flap.classList.add('active');
+            } else {
+                btn.classList.remove('selected');
+            }
+        });
+
+        if (byUser) {
+            document.getElementById('status-msg').innerText = "WAITING FOR OTHERS...";
+            document.getElementById('status-msg').style.color = "#0f0";
+        }
+    }
+
+    setTimeout(startLiveTimer, 500);
+
+    // ==========================================
+    // AUDIO & SPIN LOGIC
+    // ==========================================
+    function playCrazySound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const filter = audioCtx.createBiquadFilter();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 7);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+        filter.frequency.linearRampToValueAtTime(5000, audioCtx.currentTime + 7);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 8);
+        osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 8);
+    }
+
+    function spinCrazyWheel() {
+        playCrazySound();
+        if(document.getElementById('status-msg').innerText !== "AUTO SELECTED BLUE!") {
+            document.getElementById('status-msg').innerText = "SPINNING NOW...";
+            document.getElementById('status-msg').style.color = "#fce45e";
+        }
+        
+        let targetFlapper = activeFlappers[userFlapper] ? userFlapper : Object.keys(activeFlappers).find(k => activeFlappers[k]);
+        const targetAngleOffset = (ADMIN_TARGET_INDEX * arc) + (arc / 2);
+        const flapperAngle = flapperAngles[targetFlapper];
+        
+        let finalMod = flapperAngle - targetAngleOffset;
+        while (finalMod < 0) finalMod += 2 * Math.PI;
+        
+        let startRotationMod = currentRotation % (2 * Math.PI);
+        if(startRotationMod < 0) startRotationMod += 2 * Math.PI;
+        
+        let spinDiff = finalMod - startRotationMod; 
+        if (spinDiff < 0) spinDiff += 2 * Math.PI;
+
+        const spinMultiplier = 10; 
+        const startRotation = currentRotation;
+        const endRotation = startRotation + (spinMultiplier * 2 * Math.PI) + spinDiff;
+        const spinDuration = 8000;
+        let startTime = null;
+
+        function easeOutQuart(x) { return 1 - Math.pow(1 - x, 4); }
+
+        function spinAnimation(time) {
+            if (!startTime) startTime = time;
+            const progress = (time - startTime) / spinDuration;
+            
+            if (progress < 1) {
+                currentRotation = startRotation + (endRotation - startRotation) * easeOutQuart(progress);
+                drawWheel();
+                requestAnimationFrame(spinAnimation);
+            } else {
+                currentRotation = endRotation % (2 * Math.PI);
+                drawWheel();
+                evaluateSpinResults();
+            }
+        }
+        requestAnimationFrame(spinAnimation);
+    }
+
+    // ==========================================
+    // RESULT CALCULATION (SYNCED WITH MAIN GAME)
+    // ==========================================
+    function evaluateSpinResults() {
+        let needsRespin = false;
+        let respinMultiplier = 1;
+
+        ['green', 'blue', 'yellow'].forEach(color => {
+            if (activeFlappers[color]) {
+                let fAngle = flapperAngles[color];
+                let normRot = currentRotation % (2 * Math.PI);
+                let segAngle = (fAngle - normRot + 2 * Math.PI) % (2 * Math.PI);
+                let index = Math.floor(segAngle / arc);
+                let val = segments[index];
+
+                if (val === 'DOUBLE' || val === 'TRIPLE') {
+                    needsRespin = true;
+                    if (val === 'DOUBLE') respinMultiplier = Math.max(respinMultiplier, 2);
+                    if (val === 'TRIPLE') respinMultiplier = Math.max(respinMultiplier, 3);
+                } else {
+                    activeFlappers[color] = false;
+                    document.getElementById(`flap-${color}`).classList.add('finished');
+                    
+                    if (color === userFlapper && !userFinished) {
+                        userFinished = true;
+                        
+                        // Multiply base value with Top Slot X
+                        let totalMulti = val * topSlotMulti;
+                        finalUserWin = betAmount * totalMulti;
+                        
+                        if (betAmount > 0) {
+                            balance += finalUserWin;
+                            document.getElementById('balance').innerText = `৳${balance.toFixed(2)}`;
+                            
+                            // Send data to main CrazyTime.html to update Firebase safely
+                            localStorage.setItem('pending_bonus_win', finalUserWin); 
+                        }
+                    }
+                }
+            }
+        });
+
+        const overlayMsg = document.getElementById('overlay-msg');
+
+        if (needsRespin) {
+            // Update wheel values for respin
+            segments = segments.map(v => (v === 'DOUBLE' || v === 'TRIPLE') ? v : v * respinMultiplier);
+            
+            if (userFinished) {
+                document.getElementById('status-msg').innerText = `YOU WON ৳${finalUserWin}. WATCHING OTHERS...`;
+                document.getElementById('status-msg').style.color = "#aaa";
+                overlayMsg.innerHTML = `YOU WON ৳${finalUserWin}!<br><span style="font-size:20px; color:#fff;">OTHER FLAPPERS HIT BONUS...</span>`;
+            } else {
+                overlayMsg.innerText = respinMultiplier === 2 ? "DOUBLE!" : "TRIPLE!";
+            }
+            
+            overlayMsg.style.color = "#fce45e";
+            overlayMsg.classList.add('show');
+            
+            setTimeout(() => {
+                overlayMsg.classList.remove('show');
+                drawWheel();
+                ADMIN_TARGET_INDEX = Math.floor(Math.random() * 24); 
+                spinCrazyWheel();
+            }, 3000);
+            
+        } else {
+            // Game Fully Ended
+            if (userFinished) {
+                if (betAmount > 0) {
+                    overlayMsg.innerHTML = `<div style="font-size:20px; color:#fff;">ROUND FINISHED</div><br>YOU WON ৳${finalUserWin}`;
+                } else {
+                    // Spectator mode show multiplier
+                    let resultMulti = (finalUserWin > 0) ? (finalUserWin / betAmount) : 0; 
+                    overlayMsg.innerHTML = `<div style="font-size:20px; color:#fff;">ROUND FINISHED</div>`;
+                }
+            } else {
+                overlayMsg.innerHTML = `<div style="font-size:20px; color:#fff;">ROUND FINISHED</div>`;
+            }
+            
+            overlayMsg.classList.add('show');
+            document.getElementById('status-msg').innerText = "GAME OVER";
+
+            // Return to Main Crazy Time screen to sync balance
+            setTimeout(() => {
+                window.location.replace("crazy time.html"); 
+            }, 4500);
+        }
+    }
+
+</script>
+</body>
+</html>
