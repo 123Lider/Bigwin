@@ -17,7 +17,7 @@
         body {
             background: linear-gradient(to bottom, #4a004a 0%, #1a001a 40%, #cca31c 40%, #cca31c 100%);
             color: white; font-family: 'Montserrat', sans-serif;
-            overflow: hidden; display: flex; flex-direction: column; height: 100vh;
+            overflow-x: hidden; overflow-y:auto; display: flex; flex-direction: column; min-height: 100vh;
         }
 
         /* --- Top Navigation Bar --- */
@@ -131,7 +131,7 @@
 
         /* --- Bottom Section: Betting Board --- */
         .bottom-section {
-            flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px;
+            flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px;
             position: relative; z-index: 2;
         }
         
@@ -150,7 +150,7 @@
 
         .betting-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-            height: 100%; max-height: 480px; width: 100%; position: relative;
+            height: auto; min-height: 320px; max-height: 480px; width: 100%; position: relative;
         }
         
         .bet-card {
@@ -277,6 +277,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     width: 100%;
+    height: auto;
+    min-height: 300px;
 }
 
 .bet-card {
@@ -306,6 +308,27 @@
     right: 8px;
 }
 
+.bet-slider-wrap{
+    width:100%;
+    padding:8px 12px;
+    background:rgba(0,0,0,.75);
+    border:2px solid #fce45e;
+    border-radius:10px;
+}
+
+.bet-value{
+    text-align:center;
+    font-size:16px;
+    font-weight:900;
+    color:#fce45e;
+    margin-bottom:8px;
+}
+
+#betSlider{
+    width:100%;
+    height:4px;
+    cursor:pointer;
+}
     </style>
 </head>
 <body>
@@ -352,6 +375,21 @@
             <div class="action-btn red" onclick="clearAllBets()">✖ CLEAR ALL</div>
         </div>
 
+    <div class="bet-slider-wrap">
+    <div class="bet-value">
+        Bet Amount: ৳<span id="betValue">10</span>
+    </div>
+
+    <input
+        type="range"
+        id="betSlider"
+        min="1"
+        max="1000"
+        value="10"
+        step="1"
+    >
+</div>
+
         <div class="betting-grid">
             <!-- 1x Image Card -->
             <div class="bet-card c-1x" id="card-1x" onclick="placeBet('1x')">
@@ -360,14 +398,13 @@
                 <img src="https://i.ibb.co/DHTFbgv8/crazy-time-card-2.png" class="game-img" alt="1x">
                 <div class="bet-chip" id="chip-1x">0</div>
             </div>
-
             <!-- 2x Image Card -->
             <div class="bet-card c-2x" id="card-2x" onclick="placeBet('2x')">
                 <div class="minus-chip" id="minus-2x" onclick="removeSpecificBet(event, '2x')">−</div>
                 <!-- নিচের src এর জায়গায় আপনার 2x এর ইমেজের লিংক দেবেন -->
                 <img src="https://i.ibb.co/Vcj4Nw5p/crazy-time-card-3.png" class="game-img" alt="2x">
                 <div class="bet-chip" id="chip-2x">0</div>
-            </div>
+              </div>
 
             <!-- 5x Image Card -->
             <div class="bet-card c-5x" id="card-5x" onclick="placeBet('5x')">
@@ -376,7 +413,6 @@
                 <img src="https://i.ibb.co/vSF0Xkc/crazy-time-card-4.png" class="game-img" alt="5x">
                 <div class="bet-chip" id="chip-5x">0</div>
             </div>
-
             <!-- 10x Image Card -->
             <div class="bet-card c-10x" id="card-10x" onclick="placeBet('10x')">
                 <div class="minus-chip" id="minus-10x" onclick="removeSpecificBet(event, '10x')">−</div>
@@ -386,38 +422,32 @@
             </div>
             <div class="bet-card c-cf" id="card-Coin Flip" onclick="placeBet('Coin Flip')">
                 <div class="minus-chip" id="minus-Coin Flip" onclick="removeSpecificBet(event, 'Coin Flip')">−</div>
-                <img src="https://i.ibb.co.com/0VMXhDkX/crazy-time-coin-flip.jpg" class="game-img">
+                <img src="https://i.ibb.co/0VMXhDkX/crazy-time-coin-flip.jpg" class="game-img">
                 <div class="bet-chip" id="chip-Coin Flip">0</div>
             </div>
-
             <div class="bet-card c-pa" id="card-Pachinko" onclick="placeBet('Pachinko')">
                 <div class="minus-chip" id="minus-Pachinko" onclick="removeSpecificBet(event, 'Pachinko')">−</div>
-                <img src="https://i.ibb.co.com/v6DmvHk7/crazy-tine-pachinko.jpg" class="game-img">
+                <img src="https://i.ibb.co/v6DmvHk7/crazy-tine-pachinko.jpg" class="game-img">
                 <div class="bet-chip" id="chip-Pachinko">0</div>
             </div>
-
             <div class="bet-card c-ch" id="card-Cash Hunt" onclick="placeBet('Cash Hunt')">
                 <div class="minus-chip" id="minus-Cash Hunt" onclick="removeSpecificBet(event, 'Cash Hunt')">−</div>
-                <img src="https://i.ibb.co.com/20fqRGdT/crazy-time-cash-hunt.jpg" class="game-img">
+                <img src="https://i.ibb.co/20fqRGdT/crazy-time-cash-hunt.jpg" class="game-img">
                 <div class="bet-chip" id="chip-Cash Hunt">0</div>
             </div>
-
             <div class="bet-card c-ct" id="card-Crazy Time" onclick="placeBet('Crazy Time')">
                 <div class="minus-chip" id="minus-Crazy Time" onclick="removeSpecificBet(event, 'Crazy Time')">−</div>
-                <img src="https://i.ibb.co.com/0p15Z6JW/crazy-time-field.jpg" class="game-img">
+                <img src="https://i.ibb.co/0p15Z6JW/crazy-time-field.jpg" class="game-img">
                 <div class="bet-chip" id="chip-Crazy Time">0</div>
             </div>
-        
-        <div class="custom-bet-bar">
-            <span>Bet Amount:</span>
-            <div class="input-group">
-                <span class="currency">৳</span>
-                <input type="number" id="custom-bet-amount" value="10" min="1" max="5000">
-            </div>
-        </div>
-    </div>
 
 <script>
+const betSlider = document.getElementById("betSlider");
+const betValue = document.getElementById("betValue");
+
+betSlider.addEventListener("input", () => {
+    betValue.textContent = betSlider.value;
+});
     // ==========================================
     // FIREBASE INITIALIZATION & AUTH
     // ==========================================
@@ -556,8 +586,7 @@
         if (audioCtx.state === 'suspended') audioCtx.resume();
         if (gamePhase !== 'betting') return;
         
-        let customInput = document.getElementById('custom-bet-amount').value;
-        let betAmount = parseInt(customInput);
+        let betAmount = parseInt(document.getElementById('betSlider').value);
 
         if (isNaN(betAmount) || betAmount <= 0) { showToast("Please enter a valid amount!"); return; }
         if (currentBets[type] + betAmount > 5000) { showToast("Max limit ৳5000 per board!"); return; }
@@ -702,7 +731,12 @@
             let elapsedResultTime = serverNow - data.timestamp;
 
             // ইউজার যদি গেম ওপেন করার পর দেখে যে বোনাস গেম রানিং (28 সেকেন্ডের মধ্যে)
-            if (isInitialLoad && isBonus && elapsedResultTime < 28000) {
+            if (
+    isInitialLoad &&
+    isBonus &&
+    elapsedResultTime < 28000 &&
+    !returnedFromBonus
+) {
                 statusEl.innerHTML = "RECONNECTING TO BONUS...";
                 gamePhase = 'result';
                 toggleCards(true);
